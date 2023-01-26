@@ -1,0 +1,173 @@
+---
+title: "Madrid House Price"
+author: "Sergio Fernández, Miguel Ocón, Enrique Roa"
+date: "`r format(Sys.Date(), '%d de %B de %Y')`"
+output:
+  html_document:
+    code_folding: hide
+    theme: flatly
+    number_sections: yes
+    toc: yes
+    toc_depth: 2
+    toc_float: yes
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+	echo = TRUE,
+	include = TRUE,
+	warning = FALSE,
+	message = FALSE,
+	fig.align = "center",
+	fig.height=10,
+	fig.width=15,
+	out.width = "90%"
+)
+```
+
+\
+
+<img src="/home/sergio/MÁSTER EN DATA SCIENCE/R - Projects/Madrid-House-Price/Gran_Vía_(Madrid)_1.jpg" alt="Texto alternativo para la imagen" width="ancho" height="alto" />
+
+\
+
+```{r}
+library(dplyr)
+library(tidyr)
+library(knitr)
+library(readr)
+library(ggplot2)
+library(cowplot)
+library(GGally)
+library(kableExtra)
+library(plotrix)
+library(ggcorrplot)
+library(fBasics)
+library(gridExtra)
+library(caret)
+library(makedummies)
+library(scales)
+library(leaps)
+library(ggfortify)
+library(AppliedPredictiveModeling)
+library(MASS)
+```
+
+\
+
+# Introducción y definición de objetivos
+
+El análisis de datos en el mercado inmobiliario es algo muy común y que lleva muchísimos años  desarrollandose. Con el objetivo primordial de predecir que aspectos y variables influyen principalmente en el precio de las viviendas, hemos seleccionado un dataset  ([kaggle - Madrid House Price](https://www.kaggle.com/datasets/kevsde/madrid-house-price)) con datos de viviendas en diversos barrios de la capital española.
+
+El dataset contiene información que describen características como el precio, el tamaño, el número de habitaciones... y demás información que permite a los inversores y otros interesados obtener una idea de los precios de las viviendas.
+
+\
+
+# Análisis exploratorio inicial
+
+## Lectura y preparación de los datos
+
+```{r}
+mhp <- read_csv("house_price_madrid_14_08_2022.csv")
+```
+
+```{r}
+head(mhp, 10) %>%
+  kbl() %>%
+  kable_material(c("striped", "hover")) %>%
+  scroll_box(width = "100%", height = "350px")
+```
+
+```{r}
+summary(mhp)
+```
+
+```{r include = FALSE}
+str(mhp) 
+```
+
+
+El dataset contiene **15.975 observaciones** (correspondientes a cada vivienda) y **9 variables** (de las cuales son **6 cualitativas** y **3 cuantitativas**, dos de carácter continuo y una discreta).
+
+Respecto a los datos faltantes (NA), el dataset original no tenía ninguno. Sin embargo si tiene datos que combiene atípicos que combiene analizar y si es preciso armonizar con el resto del dataset.
+
+A continuación, la descripción de cada una de las variables:
+
+  - **price**: precio\
+  - **house_type**: tipo de vivienda (hace referencia a la planta del piso, a la altura)\
+  - **house_type_2**: tipo de vivienda 2 (hace referencia a si es exterior o interior)\
+  - **rooms**: habitaciones\
+  - **m2**: metros cuadrados\
+  - **elevator**: ascensor\
+  - **garage**: garaje\
+  - **neighborhood**: barrio de Madrid\
+  - **district**: distrito de Madrid\
+
+## Tratamiento de datos faltantes
+
+No hacemos tratamiento de datos faltantes.
+
+## Armonización de datos atípicos
+
+```{r}
+
+```
+
+
+## División del dataset
+
+Dividimos el dataset en 70/30.
+
+```{r}
+set.seed(123)
+particion <- createDataPartition(mhp$district, p = 0.7, list = FALSE)
+
+mhp_train <- mhp[particion, ]
+mhp_test <- mhp[-particion, ]
+```
+
+\
+
+# Análisis de variables cualitativas
+
+Una vez preparado el dataset comenzamos con el análisis de las variables cualitativas.
+
+```{r}
+
+```
+
+
+\
+
+# Análisis de variables cuantitativas
+
+Pasamos a analizar las variables cuantitativas.
+
+```{r}
+
+```
+
+
+\
+
+# Análisis multivariante
+
+
+
+\
+
+# Transformación de variables
+
+
+
+\
+
+# Modelo de regresión lineal
+
+
+
+\
+
+# Conclusiones
+
+
