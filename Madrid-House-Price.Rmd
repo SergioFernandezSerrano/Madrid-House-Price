@@ -171,3 +171,61 @@ Pasamos a analizar las variables cuantitativas.
 # Conclusiones
 
 
+
+\
+\
+\
+
+# Aprendizaje no supervisado
+
+
+
+\
+
+# Técnicas de reducción de la dimensión
+
+
+
+\
+
+# Aprendizaje supervisado
+
+## GLM
+
+\
+
+## KNN
+
+\
+
+## Decision Trees
+
+\
+
+## Random Forest
+
+\
+
+## SVM
+
+\
+
+# Ajuste de hiperparámetros del modelo
+
+
+
+\
+
+# Evaluación y comparación de modelos
+
+
+
+\
+
+# Elección punto de corte
+
+
+
+\
+
+# Redes Bayasianas y/o GAM
