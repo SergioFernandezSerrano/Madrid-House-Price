@@ -21,7 +21,7 @@ knitr::opts_chunk$set(
 	fig.align = "center",
 	fig.height=10,
 	fig.width=15,
-	out.width = "90%"
+	out.width = "100%"
 )
 ```
 
@@ -51,6 +51,11 @@ library(leaps)
 library(ggfortify)
 library(AppliedPredictiveModeling)
 library(MASS)
+library(distances)
+```
+
+```{r}
+paste(R.Version()$version.string)
 ```
 
 \
@@ -105,21 +110,13 @@ A continuación, la descripción de cada una de las variables:
 
 ## Tratamiento de datos faltantes
 
-No hacemos tratamiento de datos faltantes.
-
-## Armonización de datos atípicos
-
-```{r}
-
-```
-
+No hacemos tratamiento de datos faltantes. Sólo la variable **house_type_2** tiene 496 filas sin datos.
 
 ## División del dataset
 
 Dividimos el dataset en 70/30.
 
 ```{r}
-set.seed(123)
 particion <- createDataPartition(mhp$district, p = 0.7, list = FALSE)
 
 mhp_train <- mhp[particion, ]
@@ -130,10 +127,88 @@ mhp_test <- mhp[-particion, ]
 
 # Análisis de variables cualitativas
 
-Una vez preparado el dataset comenzamos con el análisis de las variables cualitativas.
+Una vez preparado el dataset comenzamos con el análisis de las variables cualitativas, son las siguientes:
+
+  - **house_type**: tipo de vivienda (hace referencia a la planta del piso, a la altura)\
+  - **house_type_2**: tipo de vivienda 2 (hace referencia a si es exterior o interior)\
+  - **elevator**: ascensor\
+  - **garage**: garaje\
+  - **neighborhood**: barrio de Madrid\
+  - **district**: distrito de Madrid\
+
+\
+
+**TIPO DE VIVIENDA**
 
 ```{r}
+table(mhp_train$house_type)
+round(prop.table(table(mhp_train$house_type))*100, 2)
+```
 
+\
+
+**TIPO DE VIVIENDA 2**
+
+```{r}
+table(mhp_train$house_type_2)
+round(prop.table(table(mhp_train$house_type_2))*100, 2)
+```
+
+\
+
+**ASCENSOR**
+
+```{r}
+table(mhp_train$elevator)
+round(prop.table(table(mhp_train$elevator))*100, 2)
+```
+
+\
+
+**GARAJE**
+
+```{r}
+table(mhp_train$garage)
+round(prop.table(table(mhp_train$garage))*100, 2)
+```
+
+\
+
+**BARRIO**
+
+Esta es una variable que no nos interesa estudiar; preferimos usar la variable distrito para el estudio del precio de las viviendas.
+
+\
+
+**DISTRITO**
+
+```{r}
+table(mhp_train$district)
+round(prop.table(table(mhp_train$district))*100, 2)
+```
+
+\
+
+```{r}
+plot_grid(
+  
+  ggplot(mhp_train, aes(house_type)) + geom_bar(fill = "#0BB363") + coord_flip() + labs(x = "Tipo de vivienda", y = "Nº de viviendas", title = "Nº de viviendas por tipo") + theme(plot.title = element_text(hjust = 0.5)),
+  
+    ggplot(mhp_train, aes(district)) + geom_bar(fill = "#0BB363") + coord_flip() + labs(x = "Distrito", y = "Nº de viviendas", title = "Nº de viviendas por distrito") + theme(plot.title = element_text(hjust = 0.5)), 
+  
+  align = "h", ncol = 2, nrow = 1)
+```
+
+```{r}
+plot_grid(
+  
+  ggplot(mhp_train, aes(house_type_2)) + geom_bar(fill = "#0BB363") + labs(x = "Tipo de vivienda 2", y = "Nº de viviendas 2", title = "Nº de viviendas por tipo 2") + theme(plot.title = element_text(hjust = 0.5)),
+  
+  ggplot(mhp_train, aes(elevator)) + geom_bar(fill = "#0BB363") + labs(x = "Ascensor", y = "Nº de viviendas", title = "Nº de viviendas con ascensor") + theme(plot.title = element_text(hjust = 0.5)),
+  
+  ggplot(mhp_train, aes(garage)) + geom_bar(fill = "#0BB363") + labs(x = "Garaje", y = "Nº de viviendas", title = "Nº de viviendas con Garaje") + theme(plot.title = element_text(hjust = 0.5)),
+  
+  align = "h", ncol = 3, nrow = 1)
 ```
 
 
@@ -141,12 +216,77 @@ Una vez preparado el dataset comenzamos con el análisis de las variables cualit
 
 # Análisis de variables cuantitativas
 
-Pasamos a analizar las variables cuantitativas.
+Pasamos a analizar las variables cuantitativas, son las siguientes:
+
+  - **price**: precio\
+  - **rooms**: habitaciones\
+  - **m²**: metros cuadrados\
+
+\
+
+**PRECIO**
 
 ```{r}
-
+bind_rows(data.frame(summarise(mhp_train,
+                               max = max(`price`),
+                               min = min(`price`),
+                               mean = mean(`price`),
+                               sd = sd(`price`)))) %>% kbl() %>% kable_material(c("striped", "hover"))
 ```
 
+```{r}
+plot_grid(
+  
+  boxplot(mhp_train$price, main = 'Precio', ylab = "Valores", col = "#0BB363"),
+  
+  ggplot(mhp_train, aes(price)) + geom_histogram(aes(y=..density..), bins = 10, position = "dodge", fill = "#0BB363") + geom_density(alpha=.5, fill = "red") + labs(x = "Precio", y = "Nº de viviendas", title = "Nº de viviendas por Precio") + theme(plot.title = element_text(hjust = 0.5)),
+  
+  align = "h", ncol = 1, nrow = 2)
+```
+
+\
+
+**HABITACIONES**
+
+```{r}
+bind_rows(data.frame(summarise(mhp_train,
+                               max = max(`rooms`),
+                               min = min(`rooms`),
+                               mean = mean(`rooms`),
+                               sd = sd(`rooms`)))) %>% kbl() %>% kable_material(c("striped", "hover"))
+```
+
+```{r}
+plot_grid(
+  
+  boxplot(mhp_train$rooms, main = 'Habitaciones', ylab = "Nº Habitaciones", col = "#0BB363"),
+  
+  ggplot(mhp_train, aes(rooms)) + geom_histogram(aes(y=..density..), bins = 10, position = "dodge", fill = "#0BB363") + geom_density(alpha=.5, fill = "red") + labs(x = "Habitacionesvv", y = "Nº de habitaciones", title = "Nº de habitaciones por vivienda") + theme(plot.title = element_text(hjust = 0.5)),
+  
+  align = "h", ncol = 1, nrow = 2)
+```
+
+\
+
+**M²**
+
+```{r}
+bind_rows(data.frame(summarise(mhp_train,
+                               max = max(`m2`),
+                               min = min(`m2`),
+                               mean = mean(`m2`),
+                               sd = sd(`m2`)))) %>% kbl() %>% kable_material(c("striped", "hover"))
+```
+
+```{r}
+plot_grid(
+  
+  boxplot(mhp_train$m2, main = 'm²', ylab = "Nº Habitaciones", col = "#0BB363"),
+  
+  ggplot(mhp_train, aes(m2)) + geom_histogram(aes(y=..density..), bins = 10, position = "dodge", fill = "#0BB363") + geom_density(alpha=.5, fill = "red") + labs(x = "m²", y = "Nº de m²", title = "Nº de habitaciones por vivienda") + theme(plot.title = element_text(hjust = 0.5)),
+  
+  align = "h", ncol = 1, nrow = 2)
+```
 
 \
 
