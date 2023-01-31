@@ -25,11 +25,13 @@ knitr::opts_chunk$set(
 )
 ```
 
-\
+![](Gran_Vía_(Madrid)_1.jpg)
 
-<img src="/home/sergio/MÁSTER EN DATA SCIENCE/R - Projects/Madrid-House-Price/Gran_Vía_(Madrid)_1.jpg" alt="Texto alternativo para la imagen" width="ancho" height="alto" />
+# Introducción y definición de objetivos
 
-\
+El análisis de datos en el mercado inmobiliario es algo muy común y que lleva muchísimos años  desarrollandose. Con el objetivo primordial de predecir que aspectos y variables influyen principalmente en el precio de las viviendas, hemos seleccionado un dataset  ([kaggle - Madrid House Price](https://www.kaggle.com/datasets/kevsde/madrid-house-price)) con datos de viviendas en diversos barrios de la capital española.
+
+El dataset contiene información que describen características como el precio, el tamaño, el número de habitaciones... y demás información que permite a los inversores y otros interesados obtener una idea de los precios de las viviendas.
 
 ```{r}
 library(dplyr)
@@ -58,16 +60,6 @@ library(distances)
 paste(R.Version()$version.string)
 ```
 
-\
-
-# Introducción y definición de objetivos
-
-El análisis de datos en el mercado inmobiliario es algo muy común y que lleva muchísimos años  desarrollandose. Con el objetivo primordial de predecir que aspectos y variables influyen principalmente en el precio de las viviendas, hemos seleccionado un dataset  ([kaggle - Madrid House Price](https://www.kaggle.com/datasets/kevsde/madrid-house-price)) con datos de viviendas en diversos barrios de la capital española.
-
-El dataset contiene información que describen características como el precio, el tamaño, el número de habitaciones... y demás información que permite a los inversores y otros interesados obtener una idea de los precios de las viviendas.
-
-\
-
 # Análisis exploratorio inicial
 
 ## Lectura y preparación de los datos
@@ -87,10 +79,9 @@ head(mhp, 10) %>%
 summary(mhp)
 ```
 
-```{r include = FALSE}
+```{r}
 str(mhp) 
 ```
-
 
 El dataset contiene **15.975 observaciones** (correspondientes a cada vivienda) y **9 variables** (de las cuales son **6 cualitativas** y **3 cuantitativas**, dos de carácter continuo y una discreta).
 
@@ -108,22 +99,33 @@ A continuación, la descripción de cada una de las variables:
   - **neighborhood**: barrio de Madrid\
   - **district**: distrito de Madrid\
 
+```{r}
+# Convertimos a categorías
+mhp$house_type <- as.factor(mhp$house_type)
+mhp$house_type_2 <- as.factor(mhp$house_type_2)
+mhp$elevator <- as.factor(mhp$elevator)
+mhp$garage <- as.factor(mhp$garage)
+mhp$neighborhood <- as.factor(mhp$neighborhood)
+mhp$district <- as.factor(mhp$district)
+
+mhp$house_type <- factor(mhp$house_type, levels = c("planta -1", "bajo", "entreplanta", "planta 1", "planta 2", "planta 3", "planta 4", "planta 5", "planta 6", "planta 7", "planta 8", "planta 9", "planta 10", "planta 11", "planta 12", "planta 13", "planta 14", "planta 15", "planta 16", "planta 17", "planta 18", "planta 19", "planta 20", "casa", "chalet", "semi-sotano", "sotano"))
+```
+
 ## Tratamiento de datos faltantes
 
-No hacemos tratamiento de datos faltantes. Sólo la variable **house_type_2** tiene 496 filas sin datos.
+La variable **house_type_2** tiene 469 filas sin datos.
 
 ## División del dataset
 
 Dividimos el dataset en 70/30.
 
 ```{r}
+set.seed(108)
 particion <- createDataPartition(mhp$district, p = 0.7, list = FALSE)
 
 mhp_train <- mhp[particion, ]
 mhp_test <- mhp[-particion, ]
 ```
-
-\
 
 # Análisis de variables cualitativas
 
@@ -136,8 +138,6 @@ Una vez preparado el dataset comenzamos con el análisis de las variables cualit
   - **neighborhood**: barrio de Madrid\
   - **district**: distrito de Madrid\
 
-\
-
 **TIPO DE VIVIENDA**
 
 ```{r}
@@ -145,7 +145,9 @@ table(mhp_train$house_type)
 round(prop.table(table(mhp_train$house_type))*100, 2)
 ```
 
-\
+```{r}
+ggplot(mhp_train, aes(house_type)) + geom_bar(fill = "#0BB363") + coord_flip() + labs(x = "Tipo de vivienda", y = "Nº de viviendas", title = "Nº de viviendas por tipo") + theme(plot.title = element_text(hjust = 0.5))
+```
 
 **TIPO DE VIVIENDA 2**
 
@@ -154,7 +156,9 @@ table(mhp_train$house_type_2)
 round(prop.table(table(mhp_train$house_type_2))*100, 2)
 ```
 
-\
+```{r}
+ggplot(mhp_train, aes(house_type_2)) + geom_bar(fill = "#0BB363") + labs(x = "Tipo de vivienda", y = "Nº de viviendas", title = "Nº de viviendas por tipo") + theme(plot.title = element_text(hjust = 0.5))
+```
 
 **ASCENSOR**
 
@@ -163,7 +167,9 @@ table(mhp_train$elevator)
 round(prop.table(table(mhp_train$elevator))*100, 2)
 ```
 
-\
+```{r}
+ggplot(mhp_train, aes(elevator)) + geom_bar(fill = "#0BB363") + labs(x = "Ascensor", y = "Nº de viviendas", title = "Nº de viviendas con ascensor") + theme(plot.title = element_text(hjust = 0.5))
+```
 
 **GARAJE**
 
@@ -172,13 +178,21 @@ table(mhp_train$garage)
 round(prop.table(table(mhp_train$garage))*100, 2)
 ```
 
-\
+```{r}
+ggplot(mhp_train, aes(garage)) + geom_bar(fill = "#0BB363") + labs(x = "Garage", y = "Nº de viviendas", title = "Nº de viviendas con garage") + theme(plot.title = element_text(hjust = 0.5))
+```
 
 **BARRIO**
 
-Esta es una variable que no nos interesa estudiar; preferimos usar la variable distrito para el estudio del precio de las viviendas.
+```{r include = FALSE}
+table(mhp_train$neighborhood)
+```
 
-\
+```{r}
+ggplot(mhp_train, aes(neighborhood)) + geom_bar(fill = "#0BB363") + labs(x = "Vecindario", y = "Nº de viviendas", title = "Nº de viviendas por vecindario") + theme(plot.title = element_text(hjust = 0.5))
+```
+
+Esta es una variable que no nos interesa estudiar; preferimos usar la variable distrito para el estudio del precio de las viviendas.
 
 **DISTRITO**
 
@@ -187,16 +201,8 @@ table(mhp_train$district)
 round(prop.table(table(mhp_train$district))*100, 2)
 ```
 
-\
-
 ```{r}
-plot_grid(
-  
-  ggplot(mhp_train, aes(house_type)) + geom_bar(fill = "#0BB363") + coord_flip() + labs(x = "Tipo de vivienda", y = "Nº de viviendas", title = "Nº de viviendas por tipo") + theme(plot.title = element_text(hjust = 0.5)),
-  
-    ggplot(mhp_train, aes(district)) + geom_bar(fill = "#0BB363") + coord_flip() + labs(x = "Distrito", y = "Nº de viviendas", title = "Nº de viviendas por distrito") + theme(plot.title = element_text(hjust = 0.5)), 
-  
-  align = "h", ncol = 2, nrow = 1)
+ggplot(mhp_train, aes(district)) + geom_bar(fill = "#0BB363") + labs(x = "Distrito", y = "Nº de viviendas", title = "Nº de viviendas por distrito") + theme(plot.title = element_text(hjust = 0.5))
 ```
 
 ```{r}
@@ -211,9 +217,6 @@ plot_grid(
   align = "h", ncol = 3, nrow = 1)
 ```
 
-
-\
-
 # Análisis de variables cuantitativas
 
 Pasamos a analizar las variables cuantitativas, son las siguientes:
@@ -221,8 +224,6 @@ Pasamos a analizar las variables cuantitativas, son las siguientes:
   - **price**: precio\
   - **rooms**: habitaciones\
   - **m²**: metros cuadrados\
-
-\
 
 **PRECIO**
 
@@ -244,8 +245,6 @@ plot_grid(
   align = "h", ncol = 1, nrow = 2)
 ```
 
-\
-
 **HABITACIONES**
 
 ```{r}
@@ -265,8 +264,6 @@ plot_grid(
   
   align = "h", ncol = 1, nrow = 2)
 ```
-
-\
 
 **M²**
 
@@ -288,84 +285,36 @@ plot_grid(
   align = "h", ncol = 1, nrow = 2)
 ```
 
-\
-
 # Análisis multivariante
-
-
-
-\
 
 # Transformación de variables
 
-
-
-\
-
 # Modelo de regresión lineal
 
+# Conclusiones preliminares
 
-
-\
-
-# Conclusiones
-
-
-
-\
-\
 \
 
 # Aprendizaje no supervisado
 
-
-
-\
-
 # Técnicas de reducción de la dimensión
-
-
-
-\
 
 # Aprendizaje supervisado
 
 ## GLM
 
-\
-
 ## KNN
-
-\
 
 ## Decision Trees
 
-\
-
 ## Random Forest
-
-\
 
 ## SVM
 
-\
-
 # Ajuste de hiperparámetros del modelo
-
-
-
-\
 
 # Evaluación y comparación de modelos
 
-
-
-\
-
 # Elección punto de corte
-
-
-
-\
 
 # Redes Bayasianas y/o GAM
