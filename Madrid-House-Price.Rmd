@@ -36,12 +36,13 @@ El dataset contiene información que describen características como el precio, 
 ```{r}
 library(dplyr)
 library(tidyr)
+library(ggplot2)
+library(kableExtra)
+
 library(knitr)
 library(readr)
-library(ggplot2)
 library(cowplot)
 library(GGally)
-library(kableExtra)
 library(plotrix)
 library(ggcorrplot)
 library(fBasics)
@@ -116,7 +117,7 @@ mhp$garage <- as.factor(mhp$garage)
 mhp$neighborhood <- as.factor(mhp$neighborhood)
 mhp$district <- as.factor(mhp$district)
 
-mhp$house_type <- factor(mhp$house_type, levels = c("sotano", "semi-sotano", "casa", "chalet", "planta -1", "entreplanta", "bajo", "planta 1", "planta 2", "planta 3", "planta 4", "planta 5", "planta 6", "planta 7", "planta 8", "planta 9", "planta 10", "planta 11", "planta 12", "planta 13", "planta 14", "planta 15", "planta 16", "planta 17", "planta 18", "planta 19", "planta 20"))
+mhp$house_type <- factor(mhp$house_type, levels = c("planta -1", "sotano", "semi-sotano", "casa", "chalet", "entreplanta", "bajo", "planta 1", "planta 2", "planta 3", "planta 4", "planta 5", "planta 6", "planta 7", "planta 8", "planta 9", "planta 10", "planta 11", "planta 12", "planta 13", "planta 14", "planta 15", "planta 16", "planta 17", "planta 18", "planta 19", "planta 20"))
 ```
 
 ## Tratamiento de datos faltantes
@@ -161,55 +162,93 @@ Una vez preparado el dataset comenzamos con el análisis de las variables cualit
 **TIPO DE VIVIENDA**
 
 ```{r}
-table(mhp_train$house_type)
-round(prop.table(table(mhp_train$house_type))*100, 2)
+merge(setNames(as.data.frame(table(mhp_train$house_type)), c("house_type", "count")),
+      setNames(as.data.frame(round(prop.table(table(mhp_train$house_type))*100, 2)), c("house_type", "prop (%)"))
+) %>%
+  arrange(desc(count)) %>%
+  kbl() %>%
+  kable_material(c("striped", "hover")) %>%
+  scroll_box(width = "100%", height = "350px")
 ```
 
 ```{r}
-ggplot(mhp_train, aes(house_type)) + geom_bar(fill = "#0BB363") + coord_flip() + labs(x = "Tipo de vivienda", y = "Nº de viviendas", title = "Nº de viviendas por tipo") + theme(plot.title = element_text(hjust = 0.5))
+ggplot(mhp_train, aes(house_type)) +
+  geom_bar(fill = "#0BB363") +
+  coord_flip() +
+  labs(x = "Tipo de vivienda", y = "Nº de viviendas", title = "Nº de viviendas por tipo") +
+  theme(plot.title = element_text(hjust = 0.5))
 ```
 
 **TIPO DE VIVIENDA 2**
 
 ```{r}
-table(mhp_train$house_type_2)
-round(prop.table(table(mhp_train$house_type_2))*100, 2)
+merge(setNames(as.data.frame(table(mhp_train$house_type_2)), c("house_type_2", "count")),
+      setNames(as.data.frame(round(prop.table(table(mhp_train$house_type_2))*100, 2)), c("house_type_2", "prop (%)"))
+) %>%
+  kbl() %>%
+  kable_material(c("striped", "hover")) %>%
+  scroll_box(width = "100%", height = "350px")
 ```
 
 ```{r}
-ggplot(mhp_train, aes(house_type_2)) + geom_bar(fill = "#0BB363") + labs(x = "Tipo de vivienda", y = "Nº de viviendas", title = "Nº de viviendas por tipo") + theme(plot.title = element_text(hjust = 0.5))
+ggplot(mhp_train, aes(house_type_2)) +
+  geom_bar(fill = "#0BB363") +
+  labs(x = "Tipo de vivienda", y = "Nº de viviendas", title = "Nº de viviendas por tipo") +
+  theme(plot.title = element_text(hjust = 0.5))
 ```
 
 **ASCENSOR**
 
 ```{r}
-table(mhp_train$elevator)
-round(prop.table(table(mhp_train$elevator))*100, 2)
+merge(setNames(as.data.frame(table(mhp_train$elevator)), c("elevator", "count")),
+      setNames(as.data.frame(round(prop.table(table(mhp_train$elevator))*100, 2)), c("elevator", "prop (%)"))
+) %>%
+  kbl() %>%
+  kable_material(c("striped", "hover")) %>%
+  scroll_box(width = "100%", height = "350px")
 ```
 
 ```{r}
-ggplot(mhp_train, aes(elevator)) + geom_bar(fill = "#0BB363") + labs(x = "Ascensor", y = "Nº de viviendas", title = "Nº de viviendas con ascensor") + theme(plot.title = element_text(hjust = 0.5))
+ggplot(mhp_train, aes(elevator)) +
+  geom_bar(fill = "#0BB363") +
+  labs(x = "Ascensor", y = "Nº de viviendas", title = "Nº de viviendas con ascensor") +
+  theme(plot.title = element_text(hjust = 0.5))
 ```
 
 **GARAJE**
 
 ```{r}
-table(mhp_train$garage)
-round(prop.table(table(mhp_train$garage))*100, 2)
+merge(setNames(as.data.frame(table(mhp_train$garage)), c("garage", "count")),
+      setNames(as.data.frame(round(prop.table(table(mhp_train$garage))*100, 2)), c("garage", "prop (%)"))
+) %>%
+  kbl() %>%
+  kable_material(c("striped", "hover")) %>%
+  scroll_box(width = "100%", height = "350px")
 ```
 
 ```{r}
-ggplot(mhp_train, aes(garage)) + geom_bar(fill = "#0BB363") + labs(x = "Garage", y = "Nº de viviendas", title = "Nº de viviendas con garage") + theme(plot.title = element_text(hjust = 0.5))
+ggplot(mhp_train, aes(garage)) +
+  geom_bar(fill = "#0BB363") +
+  labs(x = "Garage", y = "Nº de viviendas", title = "Nº de viviendas con garage") +
+  theme(plot.title = element_text(hjust = 0.5))
 ```
 
 **BARRIO**
 
-```{r include = FALSE}
-table(mhp_train$neighborhood)
+```{r}
+merge(setNames(as.data.frame(table(mhp_train$neighborhood)), c("neighborhood", "count")),
+      setNames(as.data.frame(round(prop.table(table(mhp_train$neighborhood))*100, 2)), c("neighborhood", "prop (%)"))
+) %>%
+  kbl() %>%
+  kable_material(c("striped", "hover")) %>%
+  scroll_box(width = "100%", height = "350px")
 ```
 
 ```{r}
-ggplot(mhp_train, aes(neighborhood)) + geom_bar(fill = "#0BB363") + labs(x = "Vecindario", y = "Nº de viviendas", title = "Nº de viviendas por vecindario") + theme(plot.title = element_text(hjust = 0.5))
+ggplot(mhp_train, aes(neighborhood)) +
+  geom_bar(fill = "#0BB363") +
+  labs(x = "Vecindario", y = "Nº de viviendas", title = "Nº de viviendas por vecindario") +
+  theme(plot.title = element_text(hjust = 0.5), axis.text.x = element_text(angle = 90, hjust = 1))
 ```
 
 Esta es una variable que no nos interesa estudiar; preferimos usar la variable distrito para el estudio del precio de las viviendas.
@@ -217,12 +256,20 @@ Esta es una variable que no nos interesa estudiar; preferimos usar la variable d
 **DISTRITO**
 
 ```{r}
-table(mhp_train$district)
-round(prop.table(table(mhp_train$district))*100, 2)
+merge(setNames(as.data.frame(table(mhp_train$district)), c("district", "count")),
+      setNames(as.data.frame(round(prop.table(table(mhp_train$district))*100, 2)), c("district", "prop (%)"))
+) %>%
+  arrange(desc(count)) %>%
+  kbl() %>%
+  kable_material(c("striped", "hover")) %>%
+  scroll_box(width = "100%", height = "350px")
 ```
 
 ```{r}
-ggplot(mhp_train, aes(district)) + geom_bar(fill = "#0BB363") + labs(x = "Distrito", y = "Nº de viviendas", title = "Nº de viviendas por distrito") + theme(plot.title = element_text(hjust = 0.5))
+ggplot(mhp_train, aes(district)) +
+  geom_bar(fill = "#0BB363") +
+  labs(x = "Distrito", y = "Nº de viviendas", title = "Nº de viviendas por distrito") +
+  theme(plot.title = element_text(hjust = 0.5), axis.text.x = element_text(angle = 30, hjust = 1))
 ```
 
 ```{r}
@@ -241,9 +288,11 @@ plot_grid(
 
 Pasamos a analizar las variables cuantitativas, son las siguientes:
 
-  - **price**: precio\
-  - **rooms**: habitaciones\
-  - **m²**: metros cuadrados\
+  - **price**: precio
+  
+  - **rooms**: habitaciones
+  
+  - **m²**: metros cuadrados
 
 **PRECIO**
 
@@ -259,13 +308,15 @@ data.frame(summarise(mhp_train,
 ```
 
 ```{r}
-plot_grid(
-  
-  boxplot(mhp_train$price, main = 'Precio', ylab = "Valores", col = "#0BB363"),
-  
-  ggplot(mhp_train, aes(price)) + geom_histogram(aes(y=..density..), bins = 10, position = "dodge", fill = "#0BB363") + geom_density(alpha=.5, fill = "red") + labs(x = "Precio", y = "Nº de viviendas", title = "Nº de viviendas por Precio") + theme(plot.title = element_text(hjust = 0.5)),
-  
-  align = "h", ncol = 1, nrow = 2)
+boxplot(mhp_train$price, main = 'Precio', ylab = "Valores", col = "#0BB363")
+```
+
+```{r}
+ggplot(mhp_train, aes(price)) +
+  geom_histogram(aes(y=..density..), bins = 100, position = "dodge", fill = "#0BB363") +
+  geom_density(alpha=.5, fill = "red") +
+  labs(x = "Precio", y = "Nº de viviendas", title = "Nº de viviendas por Precio") +
+  theme(plot.title = element_text(hjust = 0.5))
 ```
 
 **HABITACIONES**
@@ -282,13 +333,15 @@ data.frame(summarise(mhp_train,
 ```
 
 ```{r}
-plot_grid(
-  
-  boxplot(mhp_train$rooms, main = 'Habitaciones', ylab = "Nº Habitaciones", col = "#0BB363"),
-  
-  ggplot(mhp_train, aes(rooms)) + geom_histogram(aes(y=..density..), bins = 10, position = "dodge", fill = "#0BB363") + geom_density(alpha=.5, fill = "red") + labs(x = "Habitacionesvv", y = "Nº de habitaciones", title = "Nº de habitaciones por vivienda") + theme(plot.title = element_text(hjust = 0.5)),
-  
-  align = "h", ncol = 1, nrow = 2)
+boxplot(mhp_train$rooms, main = 'Habitaciones', ylab = "Valores", col = "#0BB363")
+```
+
+```{r}
+ggplot(mhp_train, aes(rooms)) +
+  geom_histogram(aes(y=..density..), bins = 40, position = "dodge", fill = "#0BB363") +
+  geom_density(alpha=.5, fill = "red") +
+  labs(x = "Habitaciones", y = "Nº de viviendas", title = "Viviendas por nñumero de habitaciones") +
+  theme(plot.title = element_text(hjust = 0.5))
 ```
 
 **M²**
@@ -305,13 +358,15 @@ data.frame(summarise(mhp_train,
 ```
 
 ```{r}
-plot_grid(
-  
-  boxplot(mhp_train$m2, main = 'm²', ylab = "Nº Habitaciones", col = "#0BB363"),
-  
-  ggplot(mhp_train, aes(m2)) + geom_histogram(aes(y=..density..), bins = 10, position = "dodge", fill = "#0BB363") + geom_density(alpha=.5, fill = "red") + labs(x = "m²", y = "Nº de m²", title = "Nº de habitaciones por vivienda") + theme(plot.title = element_text(hjust = 0.5)),
-  
-  align = "h", ncol = 1, nrow = 2)
+boxplot(mhp_train$m2, main = 'm2', ylab = "Valores", col = "#0BB363")
+```
+
+```{r}
+ggplot(mhp_train, aes(m2)) +
+  geom_histogram(aes(y=..density..), bins = 100, position = "dodge", fill = "#0BB363") +
+  geom_density(alpha=.5, fill = "red") +
+  labs(x = "m2", y = "Nº de viviendas", title = "Viviendas por metros cuadrados") +
+  theme(plot.title = element_text(hjust = 0.5))
 ```
 
 # Análisis multivariante
