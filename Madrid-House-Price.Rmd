@@ -89,15 +89,23 @@ Respecto a los datos faltantes (NA), el dataset original no tenía ninguno. Sin 
 
 A continuación, la descripción de cada una de las variables:
 
-  - **price**: precio\
-  - **house_type**: tipo de vivienda (hace referencia a la planta del piso, a la altura)\
-  - **house_type_2**: tipo de vivienda 2 (hace referencia a si es exterior o interior)\
-  - **rooms**: habitaciones\
-  - **m2**: metros cuadrados\
-  - **elevator**: ascensor\
-  - **garage**: garaje\
-  - **neighborhood**: barrio de Madrid\
-  - **district**: distrito de Madrid\
+  - **price**: precio
+  
+  - **house_type**: tipo de vivienda (hace referencia a la planta del piso, a la altura)
+  
+  - **house_type_2**: tipo de vivienda 2 (hace referencia a si es exterior o interior)
+  
+  - **rooms**: habitaciones
+  
+  - **m2**: metros cuadrados
+  
+  - **elevator**: ascensor
+  
+  - **garage**: garaje
+  
+  - **neighborhood**: barrio de Madrid
+  
+  - **district**: distrito de Madrid
 
 ```{r}
 # Convertimos a categorías
@@ -108,12 +116,16 @@ mhp$garage <- as.factor(mhp$garage)
 mhp$neighborhood <- as.factor(mhp$neighborhood)
 mhp$district <- as.factor(mhp$district)
 
-mhp$house_type <- factor(mhp$house_type, levels = c("planta -1", "bajo", "entreplanta", "planta 1", "planta 2", "planta 3", "planta 4", "planta 5", "planta 6", "planta 7", "planta 8", "planta 9", "planta 10", "planta 11", "planta 12", "planta 13", "planta 14", "planta 15", "planta 16", "planta 17", "planta 18", "planta 19", "planta 20", "casa", "chalet", "semi-sotano", "sotano"))
+mhp$house_type <- factor(mhp$house_type, levels = c("sotano", "semi-sotano", "casa", "chalet", "planta -1", "entreplanta", "bajo", "planta 1", "planta 2", "planta 3", "planta 4", "planta 5", "planta 6", "planta 7", "planta 8", "planta 9", "planta 10", "planta 11", "planta 12", "planta 13", "planta 14", "planta 15", "planta 16", "planta 17", "planta 18", "planta 19", "planta 20"))
 ```
 
 ## Tratamiento de datos faltantes
 
-La variable **house_type_2** tiene 469 filas sin datos.
+La variable **house_type_2** tiene 469 filas sin datos. Al ser menos del 3% del total (2.94%) optamos por eliminar estas filas del dataset.
+
+```{r}
+mhp <- na.omit(mhp)
+```
 
 ## División del dataset
 
@@ -127,16 +139,24 @@ mhp_train <- mhp[particion, ]
 mhp_test <- mhp[-particion, ]
 ```
 
-# Análisis de variables cualitativas
+# Análisis univariante
+
+## Análisis de variables cualitativas
 
 Una vez preparado el dataset comenzamos con el análisis de las variables cualitativas, son las siguientes:
 
-  - **house_type**: tipo de vivienda (hace referencia a la planta del piso, a la altura)\
-  - **house_type_2**: tipo de vivienda 2 (hace referencia a si es exterior o interior)\
-  - **elevator**: ascensor\
-  - **garage**: garaje\
-  - **neighborhood**: barrio de Madrid\
-  - **district**: distrito de Madrid\
+  - **house_type**: tipo de vivienda (hace referencia a la planta del piso, a la altura)
+  
+  - **house_type_2**: tipo de vivienda 2 (hace referencia a si es exterior o interior)
+  
+  - **elevator**: ascensor
+  
+  - **garage**: garaje
+  
+  - **neighborhood**: barrio de Madrid
+  
+  - **district**: distrito de Madrid
+  
 
 **TIPO DE VIVIENDA**
 
@@ -217,7 +237,7 @@ plot_grid(
   align = "h", ncol = 3, nrow = 1)
 ```
 
-# Análisis de variables cuantitativas
+## Análisis de variables cuantitativas
 
 Pasamos a analizar las variables cuantitativas, son las siguientes:
 
@@ -228,11 +248,14 @@ Pasamos a analizar las variables cuantitativas, son las siguientes:
 **PRECIO**
 
 ```{r}
-bind_rows(data.frame(summarise(mhp_train,
-                               max = max(`price`),
-                               min = min(`price`),
-                               mean = mean(`price`),
-                               sd = sd(`price`)))) %>% kbl() %>% kable_material(c("striped", "hover"))
+data.frame(summarise(mhp_train,
+                     min = min(price),
+                     max = max(price),
+                     median = median(price),
+                     mean = mean(price),
+                     sd = sd(price))) %>%
+  kbl() %>%
+  kable_material(c("striped", "hover"))
 ```
 
 ```{r}
@@ -248,11 +271,14 @@ plot_grid(
 **HABITACIONES**
 
 ```{r}
-bind_rows(data.frame(summarise(mhp_train,
-                               max = max(`rooms`),
-                               min = min(`rooms`),
-                               mean = mean(`rooms`),
-                               sd = sd(`rooms`)))) %>% kbl() %>% kable_material(c("striped", "hover"))
+data.frame(summarise(mhp_train,
+                     min = min(rooms),
+                     max = max(rooms),
+                     median = median(rooms),
+                     mean = mean(rooms),
+                     sd = sd(rooms))) %>%
+  kbl() %>%
+  kable_material(c("striped", "hover"))
 ```
 
 ```{r}
@@ -268,11 +294,14 @@ plot_grid(
 **M²**
 
 ```{r}
-bind_rows(data.frame(summarise(mhp_train,
-                               max = max(`m2`),
-                               min = min(`m2`),
-                               mean = mean(`m2`),
-                               sd = sd(`m2`)))) %>% kbl() %>% kable_material(c("striped", "hover"))
+data.frame(summarise(mhp_train,
+                     min = min(m2),
+                     max = max(m2),
+                     median = median(m2),
+                     mean = mean(m2),
+                     sd = sd(m2))) %>%
+  kbl() %>%
+  kable_material(c("striped", "hover"))
 ```
 
 ```{r}
