@@ -38,6 +38,7 @@ library(dplyr)
 library(tidyr)
 library(ggplot2)
 library(kableExtra)
+library(gmodels)
 
 library(knitr)
 library(readr)
@@ -128,6 +129,16 @@ La variable **house_type_2** tiene 469 filas sin datos. Al ser menos del 3% del 
 mhp <- na.omit(mhp)
 ```
 
+Quitamos también la casa de 41 habitaciones (probablemente fueran 4 y está mal imputado), las que tienen menos de 3 m2 (probablemente mal imputados al usar el punto para separar los miles) y la casa con un precio de 725 (claramente equivocado).
+
+```{r}
+mhp <- mhp[mhp$rooms < 40,]
+
+mhp <- mhp[mhp$m2 > 3,]
+
+mhp <- mhp[mhp$price > 1000,]
+```
+
 ## División del dataset
 
 Dividimos el dataset en 70/30.
@@ -186,8 +197,7 @@ merge(setNames(as.data.frame(table(mhp_train$house_type_2)), c("house_type_2", "
       setNames(as.data.frame(round(prop.table(table(mhp_train$house_type_2))*100, 2)), c("house_type_2", "prop (%)"))
 ) %>%
   kbl() %>%
-  kable_material(c("striped", "hover")) %>%
-  scroll_box(width = "100%", height = "350px")
+  kable_material(c("striped", "hover"))
 ```
 
 ```{r}
@@ -204,8 +214,7 @@ merge(setNames(as.data.frame(table(mhp_train$elevator)), c("elevator", "count"))
       setNames(as.data.frame(round(prop.table(table(mhp_train$elevator))*100, 2)), c("elevator", "prop (%)"))
 ) %>%
   kbl() %>%
-  kable_material(c("striped", "hover")) %>%
-  scroll_box(width = "100%", height = "350px")
+  kable_material(c("striped", "hover"))
 ```
 
 ```{r}
@@ -222,8 +231,7 @@ merge(setNames(as.data.frame(table(mhp_train$garage)), c("garage", "count")),
       setNames(as.data.frame(round(prop.table(table(mhp_train$garage))*100, 2)), c("garage", "prop (%)"))
 ) %>%
   kbl() %>%
-  kable_material(c("striped", "hover")) %>%
-  scroll_box(width = "100%", height = "350px")
+  kable_material(c("striped", "hover"))
 ```
 
 ```{r}
@@ -370,6 +378,137 @@ ggplot(mhp_train, aes(m2)) +
 ```
 
 # Análisis multivariante
+
+```{r}
+with(mhp_train, CrossTable(house_type_2, elevator, format = 'SPSS'))
+```
+
+```{r}
+with(mhp_train, ftable(house_type_2, elevator, garage))
+```
+
+```{r}
+plot_grid(
+  ggcorrplot(cor(mhp_train %>% select_if(is.numeric)),type = "lower", lab=TRUE),
+  
+  ggplot(mhp_train, aes(x = m2, y = price)) +
+  geom_point() +
+  geom_smooth(method = "lm") +
+  ggtitle('Relación entre el precio y los metros cuadrados'),
+  
+  ggplot(mhp_train, aes(x = rooms, y = price)) +
+  geom_point() +
+  geom_smooth(method = "lm") +
+  ggtitle('Relación entre el precio y el múmero de habitaciones'),
+  
+  ggplot(mhp_train, aes(x = rooms, y = m2)) +
+  geom_point() +
+  geom_smooth(method = "lm") +
+  ggtitle('Relación entre los metros cuadrados y el número de habitaciones'),
+  
+  nrow = 2
+)
+```
+
+```{r}
+plot_grid(
+  ggplot(mhp_train, aes(x = m2, y = price, colour = house_type_2)) +
+  geom_point() +
+  geom_smooth(method = "lm") +
+  ggtitle('Relación entre el precio y la superficie, por tipo'),
+  
+  ggplot(mhp_train, aes(x = rooms, y = price, colour = house_type_2)) +
+  geom_point() +
+  geom_smooth(method = "lm") +
+  ggtitle('Relación entre el precio y las habitaciones, por tipo'),
+  
+  nrow =1
+)
+```
+
+```{r}
+plot_grid(
+  ggplot(mhp_train, aes(x = m2, y = price, colour = elevator)) +
+  geom_point() +
+  geom_smooth(method = "lm") +
+  ggtitle('Relación entre el precio y la superficie, por ascensor'),
+  
+  ggplot(mhp_train, aes(x = rooms, y = price, colour = elevator)) +
+  geom_point() +
+  geom_smooth(method = "lm") +
+  ggtitle('Relación entre el precio y las habitaciones, por ascensor'),
+  
+  nrow =1
+)
+```
+
+```{r}
+plot_grid(
+  ggplot(mhp_train, aes(x = m2, y = price, colour = garage)) +
+  geom_point() +
+  geom_smooth(method = "lm") +
+  ggtitle('Relación entre el precio y la superficie, por garaje'),
+  
+  ggplot(mhp_train, aes(x = rooms, y = price, colour = garage)) +
+  geom_point() +
+  geom_smooth(method = "lm") +
+  ggtitle('Relación entre el precio y las habitaciones, por garaje'),
+  
+  nrow =1
+)
+```
+
+```{r}
+plot_grid(
+  ggplot(mhp_train, aes(x = m2, y = price, colour = district)) +
+  geom_point() +
+  geom_smooth(method = "lm") +
+  ggtitle('Relación entre el precio y la superficie, por distrito'),
+  
+  ggplot(mhp_train, aes(x = rooms, y = price, colour = district)) +
+  geom_point() +
+  geom_smooth(method = "lm") +
+  ggtitle('Relación entre el precio y las habitaciones, por distrito'),
+  
+  nrow =1
+)
+```
+
+```{r}
+mhp_train %>%
+  group_by(district, m2) %>%
+  summarize(avg_price = mean(price)) %>%
+  ggplot(aes(x = m2, y = avg_price)) + 
+  geom_point(size = 1) +
+  facet_wrap(~ district)
+```
+
+```{r}
+mhp_train %>%
+  group_by(district, house_type_2) %>% 
+  summarise(avg_price = mean(price)) %>%
+  ggplot(aes(x=district, y=avg_price, fill=house_type_2)) +
+  geom_bar(stat = "identity", position = "dodge") + 
+  ggtitle("Precio medio por distrito y tipo de casa")
+```
+
+```{r}
+mhp_train %>%
+  group_by(district, elevator) %>% 
+  summarise(avg_price = mean(price)) %>%
+  ggplot(aes(x=district, y=avg_price, fill=elevator)) +
+  geom_bar(stat = "identity", position = "dodge") + 
+  ggtitle("Precio medio por distrito y ascensor")
+```
+
+```{r}
+mhp_train %>%
+  group_by(district, garage) %>% 
+  summarise(avg_price = mean(price)) %>%
+  ggplot(aes(x=district, y=avg_price, fill=garage)) +
+  geom_bar(stat = "identity", position = "dodge") + 
+  ggtitle("Precio medio por distrito y garaje")
+```
 
 # Transformación de variables
 
