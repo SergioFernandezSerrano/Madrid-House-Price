@@ -19,9 +19,7 @@ knitr::opts_chunk$set(
 	warning = FALSE,
 	message = FALSE,
 	fig.align = "center",
-	fig.height=10,
-	fig.width=15,
-	out.width = "100%"
+	out.width = "90%"
 )
 ```
 
@@ -29,33 +27,18 @@ knitr::opts_chunk$set(
 
 # Introducción y definición de objetivos
 
-El análisis de datos en el mercado inmobiliario es algo muy común y que lleva muchísimos años  desarrollandose. Con el objetivo primordial de predecir que aspectos y variables influyen principalmente en el precio de las viviendas, hemos seleccionado un dataset  ([kaggle - Madrid House Price](https://www.kaggle.com/datasets/kevsde/madrid-house-price)) con datos de viviendas en diversos barrios de la capital española.
-
-El dataset contiene información que describen características como el precio, el tamaño, el número de habitaciones... y demás información que permite a los inversores y otros interesados obtener una idea de los precios de las viviendas.
+El análisis de datos en el mercado inmobiliario es algo muy común y que lleva muchísimos años  desarrollándose. Con el objetivo de predecir que aspectos influyen principalmente en el precio de las casas en Madrid, hemos seleccionado un dataset  ([kaggle - Madrid House Price](https://www.kaggle.com/datasets/kevsde/madrid-house-price)) con viviendas en venta de la capital española.
 
 ```{r}
+library(readr)
 library(dplyr)
 library(tidyr)
-library(ggplot2)
 library(kableExtra)
-library(gmodels)
-
-library(knitr)
-library(readr)
+library(ggplot2)
 library(cowplot)
-library(GGally)
-library(plotrix)
 library(ggcorrplot)
-library(fBasics)
-library(gridExtra)
+library(gmodels)
 library(caret)
-library(makedummies)
-library(scales)
-library(leaps)
-library(ggfortify)
-library(AppliedPredictiveModeling)
-library(MASS)
-library(distances)
 ```
 
 ```{r}
@@ -74,7 +57,7 @@ mhp <- read_csv("house_price_madrid_14_08_2022.csv")
 head(mhp, 10) %>%
   kbl() %>%
   kable_material(c("striped", "hover")) %>%
-  scroll_box(width = "100%", height = "350px")
+  scroll_box(width = "90%", height = "350px")
 ```
 
 ```{r}
@@ -85,58 +68,69 @@ summary(mhp)
 str(mhp) 
 ```
 
-El dataset contiene **15.975 observaciones** (correspondientes a cada vivienda) y **9 variables** (de las cuales son **6 cualitativas** y **3 cuantitativas**, dos de carácter continuo y una discreta).
-
-Respecto a los datos faltantes (NA), el dataset original no tenía ninguno. Sin embargo si tiene datos que combiene atípicos que combiene analizar y si es preciso armonizar con el resto del dataset.
+El dataset contiene **15.975 observaciones** (correspondientes a una vivienda cada una) y **9 variables** (de las cuales son **6 cualitativas** y **3 cuantitativas**).
 
 A continuación, la descripción de cada una de las variables:
 
   - **price**: precio
   
-  - **house_type**: tipo de vivienda (hace referencia a la planta del piso, a la altura)
+  - **house_type**: tipo de vivienda (casa, chalet, piso...)
   
-  - **house_type_2**: tipo de vivienda 2 (hace referencia a si es exterior o interior)
+  - **house_type_2**: si es exterior o interior
   
-  - **rooms**: habitaciones
+  - **rooms**: número de habitaciones
   
   - **m2**: metros cuadrados
   
-  - **elevator**: ascensor
+  - **elevator**: si tiene ascensor
   
-  - **garage**: garaje
+  - **garage**: si incluye garaje
   
   - **neighborhood**: barrio de Madrid
   
   - **district**: distrito de Madrid
 
+## Tratamiento de datos faltantes
+
+Convertimos en NA la casa de 41 habitaciones (probablemente fueran 4 y está mal imputado), las que tienen menos de 3 m2 (probablemente mal imputados al usar el punto para separar los miles) y la casa con un precio de 725 (claramente equivocado).
+
 ```{r}
-# Convertimos a categorías
+mhp$rooms[mhp$rooms > 40] <- NA
+mhp$m2[mhp$m2 < 3] <- NA
+mhp$price[mhp$price < 1000] <- NA
+```
+
+La variable **house_type_2** tiene 469 filas sin datos. Junto a los añadidos anteriormente son el 3.2% del total. Optamos por eliminar estas filas del dataset.
+
+```{r}
+sum(is.na(mhp))/nrow(mhp)
+mhp <- na.omit(mhp)
+```
+
+## Procesado de variables categóricas
+
+```{r}
+mhp <- mhp %>% rename(exterior = house_type_2)
+
+mhp$exterior = ifelse(mhp$exterior == "exterior", 1, 0)
+mhp$exterior = factor(mhp$exterior, levels = c(1,0))
+
+mhp$elevator = ifelse(mhp$elevator == "TRUE", 1, 0)
+mhp$elevator = factor(mhp$elevator, levels = c(1,0))
+
+mhp$garage = ifelse(mhp$garage == "TRUE", 1, 0)
+mhp$garage = factor(mhp$garage, levels = c(1,0))
+```
+
+```{r}
 mhp$house_type <- as.factor(mhp$house_type)
-mhp$house_type_2 <- as.factor(mhp$house_type_2)
+mhp$exterior <- as.factor(mhp$exterior)
 mhp$elevator <- as.factor(mhp$elevator)
 mhp$garage <- as.factor(mhp$garage)
 mhp$neighborhood <- as.factor(mhp$neighborhood)
 mhp$district <- as.factor(mhp$district)
 
-mhp$house_type <- factor(mhp$house_type, levels = c("planta -1", "sotano", "semi-sotano", "casa", "chalet", "entreplanta", "bajo", "planta 1", "planta 2", "planta 3", "planta 4", "planta 5", "planta 6", "planta 7", "planta 8", "planta 9", "planta 10", "planta 11", "planta 12", "planta 13", "planta 14", "planta 15", "planta 16", "planta 17", "planta 18", "planta 19", "planta 20"))
-```
-
-## Tratamiento de datos faltantes
-
-La variable **house_type_2** tiene 469 filas sin datos. Al ser menos del 3% del total (2.94%) optamos por eliminar estas filas del dataset.
-
-```{r}
-mhp <- na.omit(mhp)
-```
-
-Quitamos también la casa de 41 habitaciones (probablemente fueran 4 y está mal imputado), las que tienen menos de 3 m2 (probablemente mal imputados al usar el punto para separar los miles) y la casa con un precio de 725 (claramente equivocado).
-
-```{r}
-mhp <- mhp[mhp$rooms < 40,]
-
-mhp <- mhp[mhp$m2 > 3,]
-
-mhp <- mhp[mhp$price > 1000,]
+mhp$house_type <- factor(mhp$house_type, ordered = TRUE, levels = c("planta -1", "sotano", "semi-sotano", "casa", "chalet", "entreplanta", "bajo", "planta 1", "planta 2", "planta 3", "planta 4", "planta 5", "planta 6", "planta 7", "planta 8", "planta 9", "planta 10", "planta 11", "planta 12", "planta 13", "planta 14", "planta 15", "planta 16", "planta 17", "planta 18", "planta 19", "planta 20"))
 ```
 
 ## División del dataset
@@ -154,21 +148,6 @@ mhp_test <- mhp[-particion, ]
 # Análisis univariante
 
 ## Análisis de variables cualitativas
-
-Una vez preparado el dataset comenzamos con el análisis de las variables cualitativas, son las siguientes:
-
-  - **house_type**: tipo de vivienda (hace referencia a la planta del piso, a la altura)
-  
-  - **house_type_2**: tipo de vivienda 2 (hace referencia a si es exterior o interior)
-  
-  - **elevator**: ascensor
-  
-  - **garage**: garaje
-  
-  - **neighborhood**: barrio de Madrid
-  
-  - **district**: distrito de Madrid
-  
 
 **TIPO DE VIVIENDA**
 
@@ -190,18 +169,18 @@ ggplot(mhp_train, aes(house_type)) +
   theme(plot.title = element_text(hjust = 0.5))
 ```
 
-**TIPO DE VIVIENDA 2**
+**EXTERIOR**
 
 ```{r}
-merge(setNames(as.data.frame(table(mhp_train$house_type_2)), c("house_type_2", "count")),
-      setNames(as.data.frame(round(prop.table(table(mhp_train$house_type_2))*100, 2)), c("house_type_2", "prop (%)"))
+merge(setNames(as.data.frame(table(mhp_train$exterior)), c("exterior", "count")),
+      setNames(as.data.frame(round(prop.table(table(mhp_train$exterior))*100, 2)), c("exterior", "prop (%)"))
 ) %>%
   kbl() %>%
   kable_material(c("striped", "hover"))
 ```
 
 ```{r}
-ggplot(mhp_train, aes(house_type_2)) +
+ggplot(mhp_train, aes(exterior)) +
   geom_bar(fill = "#0BB363") +
   labs(x = "Tipo de vivienda", y = "Nº de viviendas", title = "Nº de viviendas por tipo") +
   theme(plot.title = element_text(hjust = 0.5))
@@ -280,27 +259,7 @@ ggplot(mhp_train, aes(district)) +
   theme(plot.title = element_text(hjust = 0.5), axis.text.x = element_text(angle = 30, hjust = 1))
 ```
 
-```{r}
-plot_grid(
-  
-  ggplot(mhp_train, aes(house_type_2)) + geom_bar(fill = "#0BB363") + labs(x = "Tipo de vivienda 2", y = "Nº de viviendas 2", title = "Nº de viviendas por tipo 2") + theme(plot.title = element_text(hjust = 0.5)),
-  
-  ggplot(mhp_train, aes(elevator)) + geom_bar(fill = "#0BB363") + labs(x = "Ascensor", y = "Nº de viviendas", title = "Nº de viviendas con ascensor") + theme(plot.title = element_text(hjust = 0.5)),
-  
-  ggplot(mhp_train, aes(garage)) + geom_bar(fill = "#0BB363") + labs(x = "Garaje", y = "Nº de viviendas", title = "Nº de viviendas con Garaje") + theme(plot.title = element_text(hjust = 0.5)),
-  
-  align = "h", ncol = 3, nrow = 1)
-```
-
 ## Análisis de variables cuantitativas
-
-Pasamos a analizar las variables cuantitativas, son las siguientes:
-
-  - **price**: precio
-  
-  - **rooms**: habitaciones
-  
-  - **m²**: metros cuadrados
 
 **PRECIO**
 
@@ -380,11 +339,11 @@ ggplot(mhp_train, aes(m2)) +
 # Análisis multivariante
 
 ```{r}
-with(mhp_train, CrossTable(house_type_2, elevator, format = 'SPSS'))
+with(mhp_train, CrossTable(exterior, elevator, format = 'SPSS'))
 ```
 
 ```{r}
-with(mhp_train, ftable(house_type_2, elevator, garage))
+with(mhp_train, ftable(exterior, elevator, garage))
 ```
 
 ```{r}
@@ -412,12 +371,12 @@ plot_grid(
 
 ```{r}
 plot_grid(
-  ggplot(mhp_train, aes(x = m2, y = price, colour = house_type_2)) +
+  ggplot(mhp_train, aes(x = m2, y = price, colour = exterior)) +
   geom_point() +
   geom_smooth(method = "lm") +
   ggtitle('Relación entre el precio y la superficie, por tipo'),
   
-  ggplot(mhp_train, aes(x = rooms, y = price, colour = house_type_2)) +
+  ggplot(mhp_train, aes(x = rooms, y = price, colour = exterior)) +
   geom_point() +
   geom_smooth(method = "lm") +
   ggtitle('Relación entre el precio y las habitaciones, por tipo'),
@@ -485,9 +444,9 @@ mhp_train %>%
 
 ```{r}
 mhp_train %>%
-  group_by(district, house_type_2) %>% 
+  group_by(district, exterior) %>% 
   summarise(avg_price = mean(price)) %>%
-  ggplot(aes(x=district, y=avg_price, fill=house_type_2)) +
+  ggplot(aes(x=district, y=avg_price, fill=exterior)) +
   geom_bar(stat = "identity", position = "dodge") + 
   ggtitle("Precio medio por distrito y tipo de casa")
 ```
@@ -511,6 +470,8 @@ mhp_train %>%
 ```
 
 # Transformación de variables
+
+## Transformación de variables cuantitativas
 
 # Modelo de regresión lineal
 
