@@ -305,9 +305,9 @@ boxplot(mhp_train$rooms, main = 'Habitaciones', ylab = "Valores", col = "#0BB363
 
 ```{r}
 ggplot(mhp_train, aes(rooms)) +
-  geom_histogram(aes(y=..density..), bins = 40, position = "dodge", fill = "#0BB363") +
+  geom_histogram(aes(), bins = 16, position = "dodge", fill = "#0BB363") +
   geom_density(alpha=.5, fill = "red") +
-  labs(x = "Habitaciones", y = "Nº de viviendas", title = "Viviendas por nñumero de habitaciones") +
+  labs(x = "Habitaciones", y = "Nº de viviendas", title = "Viviendas por número de habitaciones") +
   theme(plot.title = element_text(hjust = 0.5))
 ```
 
