@@ -16,7 +16,7 @@ output:
 knitr::opts_chunk$set(
 	echo = TRUE,
 	include = TRUE,
-	warning = FALSE,
+	warning = TRUE,
 	message = FALSE,
 	fig.align = "center",
 	out.width = "90%"
@@ -57,7 +57,7 @@ mhp <- read_csv("house_price_madrid_14_08_2022.csv")
 head(mhp, 10) %>%
   kbl() %>%
   kable_material(c("striped", "hover")) %>%
-  scroll_box(width = "90%", height = "350px")
+  scroll_box(width = "100%", height = "350px")
 ```
 
 ```{r}
@@ -92,7 +92,13 @@ A continuación, la descripción de cada una de las variables:
 
 ## Tratamiento de datos faltantes
 
-Convertimos en NA la casa de 41 habitaciones (probablemente fueran 4 y está mal imputado), las que tienen menos de 3 m2 (probablemente mal imputados al usar el punto para separar los miles) y la casa con un precio de 725 (claramente equivocado).
+Convertimos en NA las siguientes observaciones:
+
+  - La casa de 41 habitaciones (probablemente fueran 4 y está mal imputado)
+  
+  - Las que tienen menos de 3 m2 (probablemente mal imputados al usar el punto para separar los miles)
+  
+  - La casa con un precio de 725 (claramente equivocado).
 
 ```{r}
 mhp$rooms[mhp$rooms > 40] <- NA
@@ -165,7 +171,7 @@ merge(setNames(as.data.frame(table(mhp_train$house_type)), c("house_type", "coun
 ggplot(mhp_train, aes(house_type)) +
   geom_bar(fill = "#0BB363") +
   coord_flip() +
-  labs(x = "Tipo de vivienda", y = "Nº de viviendas", title = "Nº de viviendas por tipo") +
+  labs(x = "Tipo de vivienda", y = "Número de viviendas", title = "Viviendas por tipo") +
   theme(plot.title = element_text(hjust = 0.5))
 ```
 
@@ -182,7 +188,7 @@ merge(setNames(as.data.frame(table(mhp_train$exterior)), c("exterior", "count"))
 ```{r}
 ggplot(mhp_train, aes(exterior)) +
   geom_bar(fill = "#0BB363") +
-  labs(x = "Tipo de vivienda", y = "Nº de viviendas", title = "Nº de viviendas por tipo") +
+  labs(x = "Exterior", y = "Número de vivienda de viviendas", title = "Viviendas exteriores") +
   theme(plot.title = element_text(hjust = 0.5))
 ```
 
@@ -199,7 +205,7 @@ merge(setNames(as.data.frame(table(mhp_train$elevator)), c("elevator", "count"))
 ```{r}
 ggplot(mhp_train, aes(elevator)) +
   geom_bar(fill = "#0BB363") +
-  labs(x = "Ascensor", y = "Nº de viviendas", title = "Nº de viviendas con ascensor") +
+  labs(x = "Ascensor", y = "Número de viviendas", title = "Viviendas con ascensor") +
   theme(plot.title = element_text(hjust = 0.5))
 ```
 
@@ -216,7 +222,7 @@ merge(setNames(as.data.frame(table(mhp_train$garage)), c("garage", "count")),
 ```{r}
 ggplot(mhp_train, aes(garage)) +
   geom_bar(fill = "#0BB363") +
-  labs(x = "Garage", y = "Nº de viviendas", title = "Nº de viviendas con garage") +
+  labs(x = "Garaje", y = "Número de viviendas", title = "Viviendas con garaje") +
   theme(plot.title = element_text(hjust = 0.5))
 ```
 
@@ -230,15 +236,6 @@ merge(setNames(as.data.frame(table(mhp_train$neighborhood)), c("neighborhood", "
   kable_material(c("striped", "hover")) %>%
   scroll_box(width = "100%", height = "350px")
 ```
-
-```{r}
-ggplot(mhp_train, aes(neighborhood)) +
-  geom_bar(fill = "#0BB363") +
-  labs(x = "Vecindario", y = "Nº de viviendas", title = "Nº de viviendas por vecindario") +
-  theme(plot.title = element_text(hjust = 0.5), axis.text.x = element_text(angle = 90, hjust = 1))
-```
-
-Esta es una variable que no nos interesa estudiar; preferimos usar la variable distrito para el estudio del precio de las viviendas.
 
 **DISTRITO**
 
@@ -255,7 +252,7 @@ merge(setNames(as.data.frame(table(mhp_train$district)), c("district", "count"))
 ```{r}
 ggplot(mhp_train, aes(district)) +
   geom_bar(fill = "#0BB363") +
-  labs(x = "Distrito", y = "Nº de viviendas", title = "Nº de viviendas por distrito") +
+  labs(x = "Distrito", y = "Número de viviendas", title = "Viviendas por distrito") +
   theme(plot.title = element_text(hjust = 0.5), axis.text.x = element_text(angle = 30, hjust = 1))
 ```
 
@@ -275,15 +272,17 @@ data.frame(summarise(mhp_train,
 ```
 
 ```{r}
-boxplot(mhp_train$price, main = 'Precio', ylab = "Valores", col = "#0BB363", las = 2)
-
+ggplot(mhp_train, aes(y = price)) +
+  geom_boxplot(fill = "#0BB363") +
+  labs(y = "Precio", title = "Boxplot de precios") +
+  theme(plot.title = element_text(hjust = 0.5), axis.text.x = element_text(angle = 30, hjust = 1))
 ```
 
 ```{r}
 ggplot(mhp_train, aes(price)) +
-  geom_histogram(aes(y=..density..), bins = 100, position = "dodge", fill = "#0BB363") +
-  geom_density(alpha=.5, fill = "red") +
-  labs(x = "Precio", y = "Nº de viviendas", title = "Nº de viviendas por Precio") +
+  geom_histogram(aes(y=..density..), bins = 50, position = "dodge", fill = "#0BB363") +
+  geom_density(alpha=.2, fill = "red") +
+  labs(x = "Precio", y = "Número de viviendas", title = "Viviendas por Precio") +
   theme(plot.title = element_text(hjust = 0.5))
 ```
 
@@ -301,16 +300,18 @@ data.frame(summarise(mhp_train,
 ```
 
 ```{r}
-boxplot(mhp_train$rooms, main = 'Habitaciones', ylab = "Valores", col = "#0BB363")
+ggplot(mhp_train, aes(y = rooms)) +
+  geom_boxplot(fill = "#0BB363") +
+  labs(y = "Habitaciones", title = "Boxplot de habitaciones") +
+  theme(plot.title = element_text(hjust = 0.5), axis.text.x = element_text(angle = 30, hjust = 1))
 ```
 
 ```{r}
 ggplot(mhp_train, aes(rooms)) +
   geom_histogram(aes(), bins = 16, position = "dodge", fill = "#0BB363") +
-  geom_density(alpha=.5, fill = "red") +
-  labs(x = "Habitaciones", y = "Nº de viviendas", title = "Viviendas por número de habitaciones") +
-  theme(plot.title = element_text(hjust = 0.5)) +
-scale_x_continuous(breaks = seq(0, max(mhp_train$rooms), by = 1))
+  geom_density(alpha=.2, fill = "red") +
+  labs(x = "Habitaciones", y = "Número de viviendas", title = "Viviendas por número de habitaciones") +
+  theme(plot.title = element_text(hjust = 0.5))
 ```
 
 **M²**
@@ -327,26 +328,21 @@ data.frame(summarise(mhp_train,
 ```
 
 ```{r}
-boxplot(mhp_train$m2, main = 'm2', ylab = "Valores", col = "#0BB363")
+ggplot(mhp_train, aes(y = m2)) +
+  geom_boxplot(fill = "#0BB363") +
+  labs(y = "Metros cuadrados", title = "Boxplot de superficies") +
+  theme(plot.title = element_text(hjust = 0.5), axis.text.x = element_text(angle = 30, hjust = 1))
 ```
 
 ```{r}
 ggplot(mhp_train, aes(m2)) +
-  geom_histogram(aes(y=..density..), bins = 100, position = "dodge", fill = "#0BB363") +
-  geom_density(alpha=.5, fill = "red") +
-  labs(x = "m2", y = "Nº de viviendas", title = "Viviendas por metros cuadrados") +
+  geom_histogram(aes(y=..density..), bins = 50, position = "dodge", fill = "#0BB363") +
+  geom_density(alpha=.2, fill = "red") +
+  labs(x = "Metros cuadrados", y = "Número de viviendas", title = "Viviendas por metros cuadrados") +
   theme(plot.title = element_text(hjust = 0.5))
 ```
 
 # Análisis multivariante
-
-```{r}
-with(mhp_train, CrossTable(exterior, elevator, format = 'SPSS'))
-```
-
-```{r}
-with(mhp_train, ftable(exterior, elevator, garage))
-```
 
 ```{r}
 plot_grid(
@@ -376,12 +372,12 @@ plot_grid(
   ggplot(mhp_train, aes(x = m2, y = price, colour = exterior)) +
   geom_point() +
   geom_smooth(method = "lm") +
-  ggtitle('Relación entre el precio y la superficie, por tipo'),
+  ggtitle('Relación precio-superficie, por exterior'),
   
   ggplot(mhp_train, aes(x = rooms, y = price, colour = exterior)) +
   geom_point() +
   geom_smooth(method = "lm") +
-  ggtitle('Relación entre el precio y las habitaciones, por tipo'),
+  ggtitle('Relación precio-habitaciones, por exterior'),
   
   nrow =1
 )
@@ -392,12 +388,12 @@ plot_grid(
   ggplot(mhp_train, aes(x = m2, y = price, colour = elevator)) +
   geom_point() +
   geom_smooth(method = "lm") +
-  ggtitle('Relación entre el precio y la superficie, por ascensor'),
+  ggtitle('Relación precio-superficie, por ascensor'),
   
   ggplot(mhp_train, aes(x = rooms, y = price, colour = elevator)) +
   geom_point() +
   geom_smooth(method = "lm") +
-  ggtitle('Relación entre el precio y las habitaciones, por ascensor'),
+  ggtitle('Relación precio-habitaciones, por ascensor'),
   
   nrow =1
 )
@@ -408,15 +404,36 @@ plot_grid(
   ggplot(mhp_train, aes(x = m2, y = price, colour = garage)) +
   geom_point() +
   geom_smooth(method = "lm") +
-  ggtitle('Relación entre el precio y la superficie, por garaje'),
+  ggtitle('Relación precio-superficie, por garaje'),
   
   ggplot(mhp_train, aes(x = rooms, y = price, colour = garage)) +
   geom_point() +
   geom_smooth(method = "lm") +
-  ggtitle('Relación entre el precio y las habitaciones, por garaje'),
+  ggtitle('Relación precio-habitaciones, por garaje'),
   
   nrow =1
 )
+```
+
+```{r}
+ggplot(mhp_train, aes(district, price)) +
+  geom_boxplot(fill = "#0BB363") +
+  labs(y = "Precio", title = "Boxplot de precios por distrito") +
+  theme(plot.title = element_text(hjust = 0.5), axis.text.x = element_text(angle = 30, hjust = 1))
+```
+
+```{r}
+ggplot(mhp_train, aes(district, rooms)) +
+  geom_boxplot(fill = "#0BB363") +
+  labs(y = "Habitaciones", title = "Boxplot de habitaciones por distrito") +
+  theme(plot.title = element_text(hjust = 0.5), axis.text.x = element_text(angle = 30, hjust = 1))
+```
+
+```{r}
+ggplot(mhp_train, aes(district, m2)) +
+  geom_boxplot(fill = "#0BB363") +
+  labs(y = "Metros cuadrados", title = "Boxplot de superficie por distrito") +
+  theme(plot.title = element_text(hjust = 0.5), axis.text.x = element_text(angle = 30, hjust = 1))
 ```
 
 ```{r}
@@ -450,7 +467,9 @@ mhp_train %>%
   summarise(avg_price = mean(price)) %>%
   ggplot(aes(x=district, y=avg_price, fill=exterior)) +
   geom_bar(stat = "identity", position = "dodge") + 
-  ggtitle("Precio medio por distrito y tipo de casa") + theme(axis.text.x = element_text(angle = 90, hjust = 1), plot.title = element_text(hjust = 0.5)) + labs(x = "distrito", y = "precio medio")
+  ggtitle("Precio medio por distrito y exterior") +
+  theme(plot.title = element_text(hjust = 0.5), axis.text.x = element_text(angle = 30, hjust = 1)) + 
+  labs(x = "Distrito", y = "Precio medio")
 ```
 
 ```{r}
@@ -459,7 +478,9 @@ mhp_train %>%
   summarise(avg_price = mean(price)) %>%
   ggplot(aes(x=district, y=avg_price, fill=elevator)) +
   geom_bar(stat = "identity", position = "dodge") + 
-  ggtitle("Precio medio por distrito y ascensor") + theme(axis.text.x = element_text(angle = 90, hjust = 1), plot.title = element_text(hjust = 0.5)) + labs(x = "distrito", y = "precio medio")
+  ggtitle("Precio medio por distrito y ascensor") +
+  theme(plot.title = element_text(hjust = 0.5), axis.text.x = element_text(angle = 30, hjust = 1)) + 
+  labs(x = "Distrito", y = "Precio medio")
 ```
 
 ```{r}
@@ -468,7 +489,9 @@ mhp_train %>%
   summarise(avg_price = mean(price)) %>%
   ggplot(aes(x=district, y=avg_price, fill=garage)) +
   geom_bar(stat = "identity", position = "dodge") + 
-  ggtitle("Precio medio por distrito y garaje") + theme(plot.title = element_text(hjust = 0.5), axis.text.x = element_text(angle = 90, hjust = 1)) + labs(x = "distrito", y = "precio medio")
+  ggtitle("Precio medio por distrito y garaje") +
+  theme(plot.title = element_text(hjust = 0.5), axis.text.x = element_text(angle = 30, hjust = 1)) + 
+  labs(x = "Distrito", y = "Precio medio")
 ```
 
 # Transformación de variables
