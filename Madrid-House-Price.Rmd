@@ -39,6 +39,7 @@ library(cowplot)
 library(ggcorrplot)
 library(gmodels)
 library(caret)
+library(ggfortify)
 ```
 
 ```{r}
@@ -350,17 +351,17 @@ plot_grid(
   
   ggplot(mhp_train, aes(x = m2, y = price)) +
   geom_point() +
-  geom_smooth(method = "lm") +
+  geom_smooth() +
   ggtitle('Relación entre el precio y los metros cuadrados'),
   
   ggplot(mhp_train, aes(x = rooms, y = price)) +
   geom_point() +
-  geom_smooth(method = "lm") +
+  geom_smooth() +
   ggtitle('Relación entre el precio y el múmero de habitaciones'),
   
   ggplot(mhp_train, aes(x = rooms, y = m2)) +
   geom_point() +
-  geom_smooth(method = "lm") +
+  geom_smooth() +
   ggtitle('Relación entre los metros cuadrados y el número de habitaciones'),
   
   nrow = 2
@@ -498,7 +499,41 @@ mhp_train %>%
 
 ## Transformación de variables cuantitativas
 
+```{r}
+plot_grid(
+  
+  ggplot(mhp_train, aes(x = m2, y = price)) +
+  geom_point() +
+  geom_smooth() +
+  ggtitle('Relación entre el precio y los metros cuadrados'),
+  
+  ggplot(mhp_train, aes(x = rooms, y = price)) +
+  geom_point() +
+  geom_smooth() +
+  ggtitle('Relación entre el precio y el múmero de habitaciones'),
+  
+  ggplot(mhp_train, aes(x = rooms, y = m2)) +
+  geom_point() +
+  geom_smooth() +
+  ggtitle('Relación entre los metros cuadrados y el número de habitaciones'),
+  
+  nrow = 2
+)
+```
+
 # Modelo de regresión lineal
+
+```{r}
+lm_fit <- lm(price ~ m2+rooms+exterior+elevator+garage, data=mhp_train)
+summary(lm_fit)
+coef(lm_fit)
+```
+
+```{r}
+library(ggfortify)
+residuals=lm_fit$residuals
+autoplot(lm_fit)
+```
 
 # Conclusiones preliminares
 
