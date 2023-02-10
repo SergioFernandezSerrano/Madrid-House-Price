@@ -12,6 +12,7 @@ output:
     toc_float: yes
 ---
 
+
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(
 	echo = TRUE,
@@ -541,7 +542,43 @@ autoplot(lm_fit)
 
 # Aprendizaje no supervisado
 
-# Técnicas de reducción de la dimensión
+# Técnicas de reducción de la dimensionalidad
+
+##PCA
+
+Dividimos el dataset quedándonos solo con las columnas numéricas y descartando la columna precio puesto que será de alguna manera nuestra variable dependiente.
+
+```{r}
+train <- mhp_train[,c(3:7)]
+```
+
+Creamos 3 variables dummy de 3 variables categóricas de si o no.
+
+```{r}
+dummy_garaje <- model.matrix(~0 + garage,data = train)
+dummy_exterior <- model.matrix(~0 + exterior, data = train)
+dummy_ascensor <- model.matrix(~0 + elevator, data = train)
+
+```
+
+
+
+```{r}
+dummy_data <- cbind(train[, c("rooms", "m2")],dummy_exterior,dummy_garaje,dummy_ascensor)
+dummy_data <- dummy_data[, colSums(dummy_data) != 0]
+```
+
+
+```{r}
+pca_result <- prcomp(dummy_data, center = TRUE, scale = TRUE)
+plot(pca_result)
+```
+
+```{r}
+summary(pca_result)
+```
+
+
 
 # Aprendizaje supervisado
 
