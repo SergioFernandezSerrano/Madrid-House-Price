@@ -565,17 +565,23 @@ dummy_ascensor <- model.matrix(~0 + elevator, data = train)
 
 ```{r}
 dummy_data <- cbind(train[, c("rooms", "m2")],dummy_exterior,dummy_garaje,dummy_ascensor)
-dummy_data <- dummy_data[, colSums(dummy_data) != 0]
 ```
 
 
 ```{r}
 pca_result <- prcomp(dummy_data, center = TRUE, scale = TRUE)
-plot(pca_result)
+summary(pca_result)
+```
+En el gráfico podemos observar que nos quedaríamos con las 4 primeras componentes, es decir, eliminariamos elevator y garage. El codo estaría en la 5 que sería si tiene garaje, por lo que al ser dummy la quitamos entera y nos quedaríamos con rooms,m2 y exterior que es lo que explica casi todo el modelo.
+
+```{r}
+plot(pca_result,type = "l",
+     main="Variance explained by PCA"
+)
 ```
 
 ```{r}
-summary(pca_result)
+plot(pca_result, main = "Gráfico PCA")
 ```
 
 
