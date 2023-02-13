@@ -41,6 +41,7 @@ library(ggcorrplot)
 library(gmodels)
 library(caret)
 library(ggfortify)
+library(scales)
 ```
 
 ```{r}
@@ -343,6 +344,16 @@ ggplot(mhp_train, aes(m2)) +
   labs(x = "Metros cuadrados", y = "Número de viviendas", title = "Viviendas por metros cuadrados") +
   theme(plot.title = element_text(hjust = 0.5))
 ```
+# Función de densidad del precio de las viviendas
+```{r}
+ggplot(data = mhp_train, aes(price))+
+  geom_density(alpha=1, fill = "red")+
+theme(plot.title = element_text(hjust = 0.5), axis.text.x = element_text(angle = 30))+
+  labs(x = "Precio", y = "Número viviendas", title = "Función densidad precio viviendas")+
+scale_x_continuous(breaks = pretty(mhp_train$price, n = 10),labels = comma_format()) +
+  scale_y_continuous(labels = comma_format())
+```
+
 
 # Análisis multivariante
 
@@ -591,6 +602,19 @@ plot(pca_result, main = "Gráfico PCA")
 ## GLM
 
 ## KNN
+
+```{r}
+X = mhp_train
+set.seed(6)
+wcss = vector()
+for (i in 1:10){
+  wcss[i] <- sum(kmeans(X, i)$withinss)
+}
+plot(1:10, wcss, type = 'b', main = "Método del codo",
+     xlab = "Número de clusters (k)", ylab = "WCSS(k)")
+```
+
+
 
 ## Decision Trees
 
