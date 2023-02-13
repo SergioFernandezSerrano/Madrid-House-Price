@@ -340,7 +340,7 @@ ggplot(mhp_train, aes(y = m2)) +
 ```{r}
 ggplot(mhp_train, aes(m2)) +
   geom_histogram(aes(y=..density..), bins = 50, position = "dodge", fill = "#0BB363") +
-  geom_density(alpha=.2, fill = "red") +
+  geom_density(alpha=.5, fill = "red") +
   labs(x = "Metros cuadrados", y = "Número de viviendas", title = "Viviendas por metros cuadrados") +
   theme(plot.title = element_text(hjust = 0.5))
 ```
@@ -369,7 +369,7 @@ plot_grid(
   ggplot(mhp_train, aes(x = rooms, y = price)) +
   geom_point() +
   geom_smooth() +
-  ggtitle('Relación entre el precio y el múmero de habitaciones'),
+  ggtitle('Relación entre el precio y el número de habitaciones'),
   
   ggplot(mhp_train, aes(x = rooms, y = m2)) +
   geom_point() +
@@ -470,7 +470,7 @@ mhp_train %>%
   group_by(district, m2) %>%
   summarize(avg_price = mean(price)) %>%
   ggplot(aes(x = m2, y = avg_price)) + 
-  geom_point(size = 1) +
+  geom_point(size = 0.5) +
   facet_wrap(~ district)
 ```
 
