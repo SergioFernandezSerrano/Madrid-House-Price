@@ -42,6 +42,7 @@ library(gmodels)
 library(caret)
 library(ggfortify)
 library(scales)
+library(cluster)
 ```
 
 ```{r}
@@ -603,8 +604,10 @@ plot(pca_result, main = "Gráfico PCA")
 
 ## KNN
 
+Aplicamos k-means sólo para las variables numéricas. Utilizando la regla del codo vemos que que lo correcto sería coger un k = 4. 
+
 ```{r}
-X = mhp_train
+X = mhp_train[,c(1,4,5)]
 set.seed(6)
 wcss = vector()
 for (i in 1:10){
@@ -614,6 +617,21 @@ plot(1:10, wcss, type = 'b', main = "Método del codo",
      xlab = "Número de clusters (k)", ylab = "WCSS(k)")
 ```
 
+Aplicamos el algoritmo con k = 4 y vemos el gráfico de clusters que nos crea con k-means.
+```{r}
+# Aplicar el algoritmo de k-means con k óptimo
+library("scatterplot3d")
+set.seed(29)
+kmeans <- kmeans(X, 4, iter.max = 300, nstart = 10)
+# Convertir los datos en una matriz
+Xmat <- as.matrix(X)
+scatterplot3d(Xmat,
+              main = "K-means",
+              xlab = "Precio",
+              ylab = "habitaciones",
+              pch = 1,
+              color = "darkred")
+```
 
 
 ## Decision Trees
