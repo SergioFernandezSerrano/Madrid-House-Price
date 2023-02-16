@@ -665,6 +665,24 @@ clusplot(X,
 
 ## KNN
 
+```{r}
+library(class)
+y_pred = knn(train = mhp_train[,3:7],
+             test = mhp_test[,3:7],
+             cl = mhp_train[,10],
+             k = 5)
+```
+
+```{r}
+# Crear la matriz de confusión
+cm = table(mhp_test[, 10], y_pred)
+```
+
+
+```
+
+
+
 
 ## Decision Trees
 
