@@ -43,6 +43,7 @@ library(caret)
 library(ggfortify)
 library(scales)
 library(cluster)
+library(tidyverse)
 ```
 
 ```{r}
@@ -678,13 +679,23 @@ y_pred = knn(train = mhp_train[,3:7],
 cm = table(mhp_test[, 10], y_pred)
 ```
 
-
+## Decision Trees
+```{r}
+library(rpart)
+library(rpart.plot)
+arbol <- rpart(cara ~ garage + elevator + rooms, data = mhp_train)
+rpart.plot(arbol)
+text(arbol)
 ```
 
+```{r}
+prediccion_1 <- predict(arbol, newdata = mhp_train, type = "class")
+```
 
+```{r}
+confusionMatrix(prediccion_1, mhp_train[["cara"]])
+```
 
-
-## Decision Trees
 
 ## Random Forest
 
