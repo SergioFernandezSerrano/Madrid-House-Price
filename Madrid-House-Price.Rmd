@@ -158,7 +158,7 @@ mhp$house_type <- factor(mhp$house_type, ordered = TRUE, levels = c("planta -1",
 
 ## División del dataset
 
-Dividimos el dataset en 70/30.
+Dividimos el dataset en train, test y validation.
 
 ```{r}
 set.seed(108)
@@ -223,7 +223,6 @@ ggplot(mhp_train, aes(exterior)) +
   labs(x = "Exterior", y = "Número de vivienda de viviendas", title = "Viviendas exteriores") +
   theme(plot.title = element_text(hjust = 0.5))
 ```
-
 **ASCENSOR**
 
 ```{r}
@@ -666,13 +665,60 @@ clusplot(X,
 
 ## KNN
 
+Intentamos ver is hay un número correcto de k-vecinos que podemos usar.
+
 ```{r}
+library(tidyverse)
 library(class)
-y_pred = knn(train = mhp_train[,3:7],
-             test = mhp_test[,3:7],
-             cl = mhp_train[,10],
-             k = 5)
+long = 15
+accuracy = rep(0,long)
+f1score = rep(0,long)
+recall = rep(0,long)
+precision = rep(0,long)
+for (i in 1:long)
+{
+  prediccion_knn_cv =knn.cv(mhp_train[,c("exterior","rooms","m2","elevator", "garage")], 
+                            k=i, cl=mhp_train$cara)
+  accuracy[i] = sum(prediccion_knn_cv == mhp_train$cara) /nrow(mhp_train)
+  recall[i] = sum(prediccion_knn_cv == mhp_train$cara & mhp_train$cara == TRUE) / sum(mhp_train$cara == TRUE)
+  precision[i] = sum(prediccion_knn_cv == mhp_train$cara & prediccion_knn_cv == TRUE) / sum(prediccion_knn_cv == TRUE)
+  f1score[i] = 2*precision[i]*recall[i]/(precision[i]+recall[i])
+}
+resultados_knn = as.data.frame(cbind(accuracy,f1score,precision,recall))
+resultados_knn = resultados_knn %>% mutate(index=as.factor(seq(1:long)))
+
+max(resultados_knn$f1score)
+which.max(resultados_knn$f1score)
+
+
+ggplot(data=resultados_knn,aes(x=index,y=accuracy)) + 
+  geom_col(colour="cyan4",fill="cyan3")+
+  ggtitle("Accuracy")
+
+
+ggplot(data=resultados_knn,aes(x=index,y=f1score)) + 
+  geom_col(colour="orange4",fill="orange3") +
+  ggtitle("F1_score values")
+
 ```
+
+Analizando el gráfico no observamos ninguna diferencia, así que cogemos 5 que es el tamaño por defecto que se suele coger.
+
+```{r}
+library(distances)
+# En train
+prediccion_knn5_train =knn.cv(mhp_train[,c("exterior","rooms","m2","elevator", "garage")], 
+                              k=5, cl=mhp_train$cara)
+confusionMatrix(table(prediccion_knn5_train,mhp_train$cara), positive= "1")
+
+#En test
+prediccion_knn5_test=knn(mhp_train[,c("exterior","rooms","m2","elevator", "garage")], mhp_test[,c("exterior","rooms","m2","elevator", "garage")],
+                         k=5, cl=mhp_train$cara)
+confusionMatrix(table(prediccion_knn5_test,mhp_test$cara), positive= "1")
+```
+
+Tras realizar diferentes pruebas quitando variables vemos que si quitamos la variable m2 nos dice que hay muchos empates y no saca nada. Sin embargo, quitando las otras variables varia muy poco el acierto en train y test.
+Obteniendo más o menos un 84% de acierto creemos que nos puede servir para clasificar las nuevas casas que entrasen en el dataset, puesto que no hemos sido capaces de mejorar ese %.
 
 ```{r}
 # Crear la matriz de confusión
