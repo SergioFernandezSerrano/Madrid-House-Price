@@ -745,6 +745,26 @@ confusionMatrix(prediccion_1, mhp_train[["cara"]])
 
 ## Random Forest
 
+```{r}
+library(randomForest)
+# Nos quedamos con todas las variables menos barrio porque hay muchas categorias
+classifier = randomForest(x = mhp_train[,c(2,3,4,5,6,7,9)],
+                          y = mhp_train$cara,
+                          ntree = 10)
+```
+
+```{r}
+# Predicción de los resultados con el conjunto de testing
+y_pred = predict(classifier, newdata = mhp_test[,c(2,3,4,5,6,7,9)])
+```
+
+
+```{r}
+# Crear la matriz de confusión
+cm = table(mhp_test[,10], y_pred)
+```
+
+
 ## SVM
 
 # Ajuste de hiperparámetros del modelo
