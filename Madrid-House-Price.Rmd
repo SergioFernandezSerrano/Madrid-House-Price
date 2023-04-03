@@ -626,6 +626,35 @@ plot(pca_result, main = "Gráfico PCA")
 
 ## GLM
 
+```{r}
+train_glm <- mhp_train[,c(3:7,10)]
+test_glm <- mhp_test[,c(3:7,10)]
+```
+
+```{r}
+glm_mhp = glm(formula = cara ~ exterior + garage + elevator + rooms,
+                 data = train_glm, 
+                 family = binomial)
+```
+
+```{r}
+# Predicción de los resultados con el conjunto de testing
+prob_pred = predict(glm_mhp, type = "response",
+                    newdata = test_glm[,-6])
+y_pred = ifelse(prob_pred> 0.5, 1, 0)
+
+# Crear la matriz de confusión
+cm = table(test_glm[, 6], y_pred)
+```
+
+
+```{r}
+library(effects)
+efectos <- allEffects(glm_mhp)
+plot(efectos)
+```
+
+
 ## KNN
 
 Aplicamos k-means sólo para las variables numéricas. Utilizando la regla del codo vemos que que lo correcto sería coger un k = 4. 
