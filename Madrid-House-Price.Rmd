@@ -50,12 +50,6 @@ library(stringr)
 ```{r}
 paste(R.Version()$version.string)
 ```
-
-```{r}
-levels(mhp$house_type)
-```
-
-
 # Análisis exploratorio inicial
 
 ## Lectura y preparación de los datos
@@ -625,7 +619,6 @@ mhp_validation = mhp[indices_validation,]
 ```
 
 
-
 # Aprendizaje no supervisado
 
 # Técnicas de reducción de la dimensionalidad
@@ -644,26 +637,42 @@ Creamos 3 variables dummy de 3 variables categóricas de si o no.
 dummy_garaje <- model.matrix(~0 + garage,data = train)
 dummy_exterior <- model.matrix(~0 + exterior, data = train)
 dummy_ascensor <- model.matrix(~0 + elevator, data = train)
-
 ```
-
-
 
 ```{r}
 dummy_data <- cbind(train[, c("rooms", "m2")],dummy_exterior,dummy_garaje,dummy_ascensor)
 ```
+
+```{r}
+prcomp(dummy_data)
+```
+Podemos observar que en la PC1 lleva un peso casi de 100 la variable m2. En PC2 pasa lo mismo con la variable rooms y en el resto de PC está algo más repartido.
+
+```{r}
+summary(prcomp(dummy_data))
+```
+Al hacer un summary de las variables vemos que la proporción de varianza explicada por la primera componente es de un 99%, es decir, que es la única relevante. Si nos fijamos vemos que la PC1 está explicada casi al 100% por los m2 y si nos fijamos en nuestra tabla vemos que los m2 tienen valores mucho más altos que el resto de variables. Por lo tanto lo que hacemos a continuación es un análisis pero escalando las variables.
+
+```{r}
+prcomp(dummy_data, scale = T)
+```
+En este caso, podemos observar que están mucho más repartidos los pesos en las componentes principales. 
+
+La presencia de ceros en la matriz de rotación en las últimas columnas PC6,PC7 y PC8 indican que estas variables originales no contribuyen significativamente a la variación en los datos, por lo que se podrían eliminar del análisis.
 
 
 ```{r}
 pca_result <- prcomp(dummy_data, center = TRUE, scale = TRUE)
 summary(pca_result)
 ```
+Observamos que con PC5 ya llegamos al 100% de la proporción de varianza explicada per vemos algunos saltos interesantes. Para ver cuantas componentes explican el modelo hacemos la regla de codo.
 
 ```{r}
 plot(pca_result,type = "l",
      main="Variance explained by PCA"
 )
 ```
+Al observar el gráfico vemos que la forma del codo sería en la 5, puesto que de la 4 a la 5 todavía hay un salto grande.
 
 ```{r}
 plot(pca_result, main = "Gráfico PCA")
