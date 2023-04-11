@@ -687,20 +687,51 @@ train_glm <- mhp_train[,c(3:7,10)]
 test_glm <- mhp_test[,c(3:7,10)]
 ```
 
+Escalamos las columnas de m2 y rooms.
+
+```{r}
+train_glm[,2:3]<- scale(train_glm[,2:3])
+test_glm[,2:3]<- scale(test_glm[,2:3])
+```
+
+
 ```{r}
 glm_mhp = glm(formula = cara ~ exterior + garage + elevator + rooms,
                  data = train_glm, 
                  family = binomial)
+summary(glm_mhp)
+```
+El modelo de regresión logística ajustado incluye las variables 'exterior', 'garage', 'elevator' y 'rooms' como predictores de la variable de respuesta binaria 'cara'. Todas las variables predictoras son estadísticamente significativas en la predicción de 'cara', lo que indica que tienen un efecto relevante en la probabilidad de que un dato sea clasificado como 'cara'.
+
+El modelo completo explica una parte significativa de la variabilidad en los datos, como lo demuestra la reducción en la devianza residual en comparación con la devianza nula. Además, el AIC sugiere que el modelo tiene un buen equilibrio entre complejidad y ajuste a los datos.
+
+```{r}
+head(predict(glm_mhp))
+```
+```{r}
+head(fitted(glm_mhp))
 ```
 
 ```{r}
-# Predicción de los resultados con el conjunto de testing
-prob_pred = predict(glm_mhp, type = "response",
-                    newdata = test_glm[,-6])
-y_pred = ifelse(prob_pred> 0.5, 1, 0)
+predicciones_glm <- ifelse(test = glm_mhp$fitted.values > 0.5, yes = 1, no = 0)
+matriz_confusion_glm <- table(glm_mhp$model$cara, predicciones_glm,
+                          dnn = c("observaciones", "predicciones"))
+matriz_confusion_glm
+```
 
-# Crear la matriz de confusión
-cm = table(test_glm[, 6], y_pred)
+
+
+```{r}
+train_glm$pred_prob <- predict(glm_mhp, type = "response")
+train_glm_long <- train_glm %>%
+  gather(key = "variable", value = "value", exterior, garage, elevator, rooms) %>%
+  mutate(variable = as.factor(variable))
+ggplot(train_glm_long, aes(x = value, y = pred_prob)) +
+  geom_point(alpha = 0.5) +
+  geom_smooth(method = "glm", method.args = list(family = "binomial"), se = FALSE, color = "blue") +
+  facet_wrap(~variable, scales = "free_x") +
+  ylim(0, 1) +
+  labs(x = "Valor de la variable independiente", y = "Probabilidad predicha", title = "Gráficos de regresión logística")
 ```
 
 
