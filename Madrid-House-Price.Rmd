@@ -58,6 +58,7 @@ paste(R.Version()$version.string)
 mhp <- read_csv("house_price_madrid_14_08_2022.csv")
 ```
 
+
 ```{r}
 head(mhp, 10) %>%
   kbl() %>%
@@ -585,15 +586,29 @@ autoplot(lm_fit)
 # Conclusiones preliminares
 
 \#.
-Para el posterior análisis cambiamos algunas variables para agruparlas y hacer el análisis lo más eficiente posible.
+Para el posterior análisis agregamos alguna columna agrupando las variables plantas en plantas bajas y plantas altas para un mejor análisis.
 
 ```{r}
 mhp <- mhp %>%
-  mutate(house_type = ifelse(!is.na(as.numeric(str_extract(house_type, "\\d+"))) & as.numeric(str_extract(house_type, "\\d+")) > 1, "plantas altas", house_type))
-unique(mhp$house_type)
+  mutate(plantas = ifelse(grepl("planta [2-9]|[1-4]\\d|50", house_type), "plantas altas", "plantas bajas"))
 ```
 
-Volvemos a dividir el dataset original con las variables ya cambiadas.
+También reamos una columna con el precio medio por distrito en la que salen las variables caro, medio o barato en función del precio del distrito.
+
+```{r}
+mhp <- mhp %>%
+  group_by(district) %>%
+  mutate(precio_distrito = mean(price)) %>%
+  ungroup()
+
+# Calcular los percentiles
+percentiles <- quantile(mhp$precio_distrito, probs = c(0, 1/3, 2/3, 1))
+
+# Asignar etiquetas
+mhp$precio_distrito <- cut(mhp$precio_distrito, breaks = percentiles, labels = c("barato", "medio", "caro"), include.lowest = TRUE)
+```
+
+Volvemos a realizar la división del dataset.
 
 ```{r}
 set.seed(108)
@@ -619,6 +634,7 @@ mhp_validation = mhp[indices_validation,]
 ```
 
 
+
 # Aprendizaje no supervisado
 
 # Técnicas de reducción de la dimensionalidad
@@ -628,7 +644,7 @@ mhp_validation = mhp[indices_validation,]
 Dividimos el dataset quedándonos solo con las columnas numéricas y descartando la columna precio puesto que será de alguna manera nuestra variable dependiente.
 
 ```{r}
-train <- mhp_train[,c(3:7)]
+train <- mhp_train[,c(3:7,11,12)]
 ```
 
 Creamos 3 variables dummy de 3 variables categóricas de si o no.
@@ -637,10 +653,12 @@ Creamos 3 variables dummy de 3 variables categóricas de si o no.
 dummy_garaje <- model.matrix(~0 + garage,data = train)
 dummy_exterior <- model.matrix(~0 + exterior, data = train)
 dummy_ascensor <- model.matrix(~0 + elevator, data = train)
+dummy_plantas <- model.matrix(~0 + plantas, data = train)
+dummy_distrito <- model.matrix(~0 + precio_distrito, data = train)
 ```
 
 ```{r}
-dummy_data <- cbind(train[, c("rooms", "m2")],dummy_exterior,dummy_garaje,dummy_ascensor)
+dummy_data <- cbind(train[, c("rooms", "m2")],dummy_exterior,dummy_garaje,dummy_ascensor,dummy_distrito,dummy_plantas)
 ```
 
 ```{r}
@@ -658,21 +676,19 @@ prcomp(dummy_data, scale = T)
 ```
 En este caso, podemos observar que están mucho más repartidos los pesos en las componentes principales. 
 
-La presencia de ceros en la matriz de rotación en las últimas columnas PC6,PC7 y PC8 indican que estas variables originales no contribuyen significativamente a la variación en los datos, por lo que se podrían eliminar del análisis.
-
 
 ```{r}
 pca_result <- prcomp(dummy_data, center = TRUE, scale = TRUE)
 summary(pca_result)
 ```
-Observamos que con PC5 ya llegamos al 100% de la proporción de varianza explicada per vemos algunos saltos interesantes. Para ver cuantas componentes explican el modelo hacemos la regla de codo.
+Observamos que con PC5 ya llegamos al 80% de la proporción de varianza explicada pero vemos algunos saltos interesantes. Para ver cuantas componentes explican el modelo hacemos la regla de codo.
 
 ```{r}
 plot(pca_result,type = "l",
      main="Variance explained by PCA"
 )
 ```
-Al observar el gráfico vemos que la forma del codo sería en la 5, puesto que de la 4 a la 5 todavía hay un salto grande.
+Al observar el gráfico vemos que la forma del codo sería en la 5,6 aunque no es un gráfico muy claro. 
 
 ```{r}
 plot(pca_result, main = "Gráfico PCA")
@@ -683,8 +699,8 @@ plot(pca_result, main = "Gráfico PCA")
 ## GLM
 
 ```{r}
-train_glm <- mhp_train[,c(3:7,10)]
-test_glm <- mhp_test[,c(3:7,10)]
+train_glm <- mhp_train[,c(3:7,10,11,12)]
+test_glm <- mhp_test[,c(3:7,10,11,12)]
 ```
 
 Escalamos las columnas de m2 y rooms.
@@ -696,14 +712,13 @@ test_glm[,2:3]<- scale(test_glm[,2:3])
 
 
 ```{r}
-glm_mhp = glm(formula = cara ~ exterior + garage + elevator + rooms,
+glm_mhp = glm(formula = cara ~ exterior + garage + elevator + rooms + precio_distrito + plantas,
                  data = train_glm, 
                  family = binomial)
 summary(glm_mhp)
 ```
-El modelo de regresión logística ajustado incluye las variables 'exterior', 'garage', 'elevator' y 'rooms' como predictores de la variable de respuesta binaria 'cara'. Todas las variables predictoras son estadísticamente significativas en la predicción de 'cara', lo que indica que tienen un efecto relevante en la probabilidad de que un dato sea clasificado como 'cara'.
-
-El modelo completo explica una parte significativa de la variabilidad en los datos, como lo demuestra la reducción en la devianza residual en comparación con la devianza nula. Además, el AIC sugiere que el modelo tiene un buen equilibrio entre complejidad y ajuste a los datos.
+En particular, las variables "garage", "elevator", "rooms", "precio_distrito_medio", "precio_distrito_caro" y "plantas bajas" tienen una relación significativa y positiva con la probabilidad de que la vivienda sea "cara", mientras que la variable "rooms" tiene una relación negativa con la probabilidad de que la vivienda sea "cara". Esto no tiene mucho sentido puesto que a más habitaciones más probable que una casa sea cara.
+El modelo explica una cantidad significativa de la varianza en la variable respuesta, con un AIC de 4904.4.
 
 ```{r}
 head(predict(glm_mhp))
@@ -717,21 +732,6 @@ predicciones_glm <- ifelse(test = glm_mhp$fitted.values > 0.5, yes = 1, no = 0)
 matriz_confusion_glm <- table(glm_mhp$model$cara, predicciones_glm,
                           dnn = c("observaciones", "predicciones"))
 matriz_confusion_glm
-```
-
-
-
-```{r}
-train_glm$pred_prob <- predict(glm_mhp, type = "response")
-train_glm_long <- train_glm %>%
-  gather(key = "variable", value = "value", exterior, garage, elevator, rooms) %>%
-  mutate(variable = as.factor(variable))
-ggplot(train_glm_long, aes(x = value, y = pred_prob)) +
-  geom_point(alpha = 0.5) +
-  geom_smooth(method = "glm", method.args = list(family = "binomial"), se = FALSE, color = "blue") +
-  facet_wrap(~variable, scales = "free_x") +
-  ylim(0, 1) +
-  labs(x = "Valor de la variable independiente", y = "Probabilidad predicha", title = "Gráficos de regresión logística")
 ```
 
 
@@ -781,7 +781,6 @@ clusplot(X,
 Intentamos ver is hay un número correcto de k-vecinos que podemos usar.
 
 ```{r}
-library(tidyverse)
 library(class)
 long = 15
 accuracy = rep(0,long)
@@ -833,19 +832,65 @@ confusionMatrix(table(prediccion_knn5_test,mhp_test$cara), positive= "1")
 Tras realizar diferentes pruebas quitando variables vemos que si quitamos la variable m2 nos dice que hay muchos empates y no saca nada. Sin embargo, quitando las otras variables varia muy poco el acierto en train y test.
 Obteniendo más o menos un 84% de acierto creemos que nos puede servir para clasificar las nuevas casas que entrasen en el dataset, puesto que no hemos sido capaces de mejorar ese %.
 
-```{r}
-# Crear la matriz de confusión
-cm = table(mhp_test[, 10], y_pred)
-```
 
 ## Decision Trees
+
+A continuación hacemos el modelo de arbol de decisión. 
+
 ```{r}
 library(rpart)
 library(rpart.plot)
-arbol <- rpart(cara ~ garage + elevator + rooms, data = mhp_train)
-rpart.plot(arbol)
-text(arbol)
+library(rattle)
+arbol <- rpart(cara ~ garage + elevator + rooms + plantas + precio_distrito, data = mhp_train, control = rpart.control(minsplit = 1))
+fancyRpartPlot(arbol, sub = "")
 ```
+Calculamos el número de aciertos y nos sale bastante aceptable.
+
+```{r}
+tab1 = table(pred = predict(arbol, mhp_test, type = "class"),
+obs = mhp_test$cara)
+ntest = nrow(mhp_test)
+acierto1 = sum(diag(tab1))/ntest
+acierto1
+```
+
+Para validar el modelo podemos usar las funciones printcp y plotcp. La función printcp nos da el número óptimo de podas basada en el valor cp. La poda se realiza para evitar overfitting sobre los datos. 
+El valor de cp ha de ser tal que la tasa de error de validación cruzada sea mínima.
+
+```{r}
+printcp(arbol)
+```
+```{r}
+arbol$cptable[which.min(arbol$cptable[, "xerror"]),
+"CP"]
+```
+
+
+```{r}
+plotcp(arbol)
+```
+Podamos el árbol como indica la función. 
+
+```{r}
+pruneTREE1 = prune(arbol, cp = arbol$cptable[which.min(arbol$cptable[,
+"xerror"]), "CP"])
+fancyRpartPlot(pruneTREE1, uniform = TRUE, main = "Pruned Classification Tree",
+sub = "")
+```
+```{r}
+pruneTREE2 = prune(arbol, cp = arbol$cptable[5, "CP"])
+fancyRpartPlot(pruneTREE2, uniform = TRUE, main = "Pruned Classification Tree",
+sub = "")
+```
+```{r}
+tab2 = table(pred = predict(pruneTREE2, mhp_test, type = "class"),
+obs = mhp_test$cara)
+acierto2 = sum(diag(tab2))/ntest
+acierto2
+```
+Nos sale literalmente es mismo resultado.
+
+Creamos la matriz de confusión. 
 
 ```{r}
 prediccion_1 <- predict(arbol, newdata = mhp_train, type = "class")
@@ -853,6 +898,10 @@ prediccion_1 <- predict(arbol, newdata = mhp_train, type = "class")
 
 ```{r}
 confusionMatrix(prediccion_1, mhp_train[["cara"]])
+```
+
+```{r}
+mhp_train$cara <- ifelse(mhp_train$cara == "cara", 1, 0)
 ```
 
 
