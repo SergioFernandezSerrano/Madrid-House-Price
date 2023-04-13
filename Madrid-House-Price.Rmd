@@ -575,13 +575,15 @@ Creamos nuestra variable target binaria
 
 ```{r}
 mhp_train$precio_bin <- ifelse(mhp_train$price > median(mhp_train$price), "cara", "barata")
-mhp_train$precio_bin <- as.factor(mhp_train$precio_bin)
+mhp_train$precio_bin = ifelse(mhp_train$precio_bin == "cara", 1, 0)
+mhp_train$precio_bin = factor(mhp_train$precio_bin, levels = c(1,0))
 ```
+
 
 Aplicamos los cambios también a test.
 
 ```{r}
-# Caategorizamos house_type
+# Categorizamos house_type
 mhp_test <- mhp_test %>%
   mutate(tipo_casa = case_when(
     grepl("casa|chalet", house_type, ignore.case = TRUE) ~ "casa",
@@ -602,7 +604,8 @@ mhp_test$precio_distrito <- cut(mhp_test$precio_distrito, breaks = percentiles, 
 
 # Creamos variable target
 mhp_test$precio_bin <- ifelse(mhp_test$price > median(mhp_test$price), "cara", "barata")
-mhp_test$precio_bin <- as.factor(mhp_test$precio_bin)
+mhp_test$precio_bin = ifelse(mhp_test$precio_bin == "cara", 1, 0)
+mhp_test$precio_bin = factor(mhp_test$precio_bin, levels = c(1,0))
 ```
 
 # Modelo de regresión lineal
