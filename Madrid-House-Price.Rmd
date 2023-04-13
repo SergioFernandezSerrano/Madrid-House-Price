@@ -640,7 +640,7 @@ summary(mhp_train)
 Dividimos el dataset quedándonos solo con las columnas numéricas y descartando la columna precio puesto que será de alguna manera nuestra variable dependiente.
 
 ```{r}
-train <- mhp_train[,c(3:7,11,12)]
+train <- mhp_train[,c(3:7,10,11,12)]
 ```
 
 Creamos 3 variables dummy de 3 variables categóricas de si o no.
@@ -677,14 +677,14 @@ En este caso, podemos observar que están mucho más repartidos los pesos en las
 pca_result <- prcomp(dummy_data, center = TRUE, scale = TRUE)
 summary(pca_result)
 ```
-Observamos que con PC5 ya llegamos al 80% de la proporción de varianza explicada pero vemos algunos saltos interesantes. Para ver cuantas componentes explican el modelo hacemos la regla de codo.
+Observamos que con PC6 ya llegamos al 80% de la proporción de varianza explicada pero vemos algunos saltos interesantes. Para ver cuantas componentes explican el modelo hacemos la regla de codo.
 
 ```{r}
 plot(pca_result,type = "l",
      main="Variance explained by PCA"
 )
 ```
-Al observar el gráfico vemos que la forma del codo sería en la 5,6 aunque no es un gráfico muy claro. 
+Al observar el gráfico vemos que la forma del codo sería en la 6,7 aunque no es un gráfico muy claro. 
 
 ```{r}
 plot(pca_result, main = "Gráfico PCA")
@@ -873,11 +873,13 @@ pruneTREE1 = prune(arbol, cp = arbol$cptable[which.min(arbol$cptable[,
 fancyRpartPlot(pruneTREE1, uniform = TRUE, main = "Pruned Classification Tree",
 sub = "")
 ```
+
 ```{r}
 pruneTREE2 = prune(arbol, cp = arbol$cptable[5, "CP"])
 fancyRpartPlot(pruneTREE2, uniform = TRUE, main = "Pruned Classification Tree",
 sub = "")
 ```
+
 ```{r}
 tab2 = table(pred = predict(pruneTREE2, mhp_test, type = "class"),
 obs = mhp_test$precio_bin)
@@ -894,10 +896,6 @@ prediccion_1 <- predict(arbol, newdata = mhp_train, type = "class")
 
 ```{r}
 confusionMatrix(prediccion_1, mhp_train[["precio_bin"]])
-```
-
-```{r}
-mhp_train$cara <- ifelse(mhp_train$cara == "precio_bin", 1, 0)
 ```
 
 
