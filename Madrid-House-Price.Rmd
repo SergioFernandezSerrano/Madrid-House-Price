@@ -45,6 +45,7 @@ library(scales)
 library(cluster)
 library(tidyverse)
 library(stringr)
+library(ggfortify)
 ```
 
 ```{r}
@@ -57,7 +58,6 @@ paste(R.Version()$version.string)
 ```{r}
 mhp <- read_csv("house_price_madrid_14_08_2022.csv")
 ```
-
 
 ```{r}
 head(mhp, 10) %>%
@@ -73,15 +73,6 @@ summary(mhp)
 ```{r}
 str(mhp) 
 ```
-
-## Creamos nuestra variable target binaria
-
-```{r}
-mhp$cara <- NA
-mhp$cara <- ifelse(mhp$price > median(mhp$price), "cara", "barata")
-
-```
-
 
 El dataset contiene **15.975 observaciones** (correspondientes a una vivienda cada una) y **9 variables** (de las cuales son **6 cualitativas** y **3 cuantitativas**).
 
@@ -128,11 +119,10 @@ sum(is.na(mhp))/nrow(mhp)
 mhp <- na.omit(mhp)
 ```
 
-## Procesado de variables categóricas
-
 ```{r}
-mhp <- mhp %>% rename(exterior = house_type_2)
+# Preparación de los datos. Convertimos a factores las variables que son categóricas y a 1-0 las binarias.
 
+mhp <- mhp %>% rename(exterior = house_type_2)
 mhp$exterior = ifelse(mhp$exterior == "exterior", 1, 0)
 mhp$exterior = factor(mhp$exterior, levels = c(1,0))
 
@@ -142,26 +132,12 @@ mhp$elevator = factor(mhp$elevator, levels = c(1,0))
 mhp$garage = ifelse(mhp$garage == "TRUE", 1, 0)
 mhp$garage = factor(mhp$garage, levels = c(1,0))
 
-mhp$cara = ifelse(mhp$cara == "cara", 1, 0)
-mhp$cara = factor(mhp$cara, levels = c(1,0))
-```
-
-Cambiamos el nombre a las planta -1 por sotano puesto que interpretamos que es el mismo tipo de vivienda. 
-
-```{r}
-mhp$house_type <- gsub("planta -1", "sotano", mhp$house_type)
-  unique(mhp$house_type)
-```
-
-```{r}
 mhp$house_type <- as.factor(mhp$house_type)
 mhp$exterior <- as.factor(mhp$exterior)
 mhp$elevator <- as.factor(mhp$elevator)
 mhp$garage <- as.factor(mhp$garage)
 mhp$neighborhood <- as.factor(mhp$neighborhood)
 mhp$district <- as.factor(mhp$district)
-
-mhp$house_type <- factor(mhp$house_type, ordered = TRUE, levels = c("planta -1", "sotano", "semi-sotano", "casa", "chalet", "entreplanta", "bajo", "planta 1", "planta 2", "planta 3", "planta 4", "planta 5", "planta 6", "planta 7", "planta 8", "planta 9", "planta 10", "planta 11", "planta 12", "planta 13", "planta 14", "planta 15", "planta 16", "planta 17", "planta 18", "planta 19", "planta 20"))
 ```
 
 ## División del dataset
@@ -322,7 +298,9 @@ ggplot(mhp_train, aes(price)) +
   geom_histogram(aes(y=..density..), bins = 50, position = "dodge", fill = "#0BB363") +
   geom_density(alpha=.2, fill = "red") +
   labs(x = "Precio", y = "Número de viviendas", title = "Viviendas por Precio") +
-  theme(plot.title = element_text(hjust = 0.5))
+  scale_x_continuous(breaks = pretty(mhp_train$price, n = 10),labels = comma_format()) +
+  scale_y_continuous(labels = comma_format()) +
+  theme(plot.title = element_text(hjust = 0.5), axis.text.x = element_text(angle = 30))
 ```
 
 **HABITACIONES**
@@ -380,16 +358,6 @@ ggplot(mhp_train, aes(m2)) +
   labs(x = "Metros cuadrados", y = "Número de viviendas", title = "Viviendas por metros cuadrados") +
   theme(plot.title = element_text(hjust = 0.5))
 ```
-# Función de densidad del precio de las viviendas
-```{r}
-ggplot(data = mhp_train, aes(price))+
-  geom_density(alpha=1, fill = "red")+
-theme(plot.title = element_text(hjust = 0.5), axis.text.x = element_text(angle = 30))+
-  labs(x = "Precio", y = "Número viviendas", title = "Función densidad precio viviendas")+
-scale_x_continuous(breaks = pretty(mhp_train$price, n = 10),labels = comma_format()) +
-  scale_y_continuous(labels = comma_format())
-```
-
 
 # Análisis multivariante
 
@@ -543,8 +511,6 @@ mhp_train %>%
   labs(x = "Distrito", y = "Precio medio")
 ```
 
-# Transformación de variables
-
 ## Transformación de variables cuantitativas
 
 ```{r}
@@ -569,6 +535,76 @@ plot_grid(
 )
 ```
 
+## Procesado de variables cualitativas
+
+```{r}
+mhp_train %>%
+  group_by(house_type) %>%
+  summarise(precio_medio = mean(price)) %>%
+  arrange(precio_medio)
+```
+
+Para el posterior análisis transformamos la columna house_type, agrupando en "piso" (independientemente de la planta en la que esté), "casa" (casa o chalet) y "sotano".
+
+```{r}
+mhp_train <- mhp_train %>%
+  mutate(tipo_casa = case_when(
+    grepl("casa|chalet", house_type, ignore.case = TRUE) ~ "casa",
+    grepl("\\bplanta\\s*-?1\\b|semi-?sotano|bajo|sotano", house_type, ignore.case = TRUE) ~ "sotano",
+    TRUE ~ "piso"
+  ))
+mhp_train$tipo_casa <- as.factor(mhp_train$tipo_casa)
+```
+
+También creamos una columna con el precio medio por distrito en la que salen las variables caro, medio o barato en función del precio del distrito.
+
+```{r}
+mhp_train <- mhp_train %>%
+  group_by(district) %>%
+  mutate(precio_distrito = mean(price)) %>%
+  ungroup()
+
+# Calcular los percentiles
+percentiles <- quantile(mhp_train$precio_distrito, probs = c(0, 1/3, 2/3, 1))
+
+# Asignar etiquetas
+mhp_train$precio_distrito <- cut(mhp_train$precio_distrito, breaks = percentiles, labels = c("barato", "medio", "caro"), include.lowest = TRUE)
+```
+
+Creamos nuestra variable target binaria
+
+```{r}
+mhp_train$precio_bin <- ifelse(mhp_train$price > median(mhp_train$price), "cara", "barata")
+mhp_train$precio_bin <- as.factor(mhp_train$precio_bin)
+```
+
+Aplicamos los cambios también a test.
+
+```{r}
+# Caategorizamos house_type
+mhp_test <- mhp_test %>%
+  mutate(tipo_casa = case_when(
+    grepl("casa|chalet", house_type, ignore.case = TRUE) ~ "casa",
+    grepl("\\bplanta\\s*-?1\\b|semi-?sotano|bajo|sotano", house_type, ignore.case = TRUE) ~ "sotano",
+    TRUE ~ "piso"
+  ))
+mhp_test$tipo_casa <- as.factor(mhp_test$tipo_casa)
+
+# Categorizamos los distritos
+mhp_test <- mhp_test %>%
+  group_by(district) %>%
+  mutate(precio_distrito = mean(price)) %>%
+  ungroup()
+
+percentiles <- quantile(mhp_test$precio_distrito, probs = c(0, 1/3, 2/3, 1))
+
+mhp_test$precio_distrito <- cut(mhp_test$precio_distrito, breaks = percentiles, labels = c("barato", "medio", "caro"), include.lowest = TRUE)
+
+# Creamos variable target
+mhp_test$precio_bin <- ifelse(mhp_test$price > median(mhp_test$price), "cara", "barata")
+mhp_test$precio_bin <- as.factor(mhp_test$precio_bin)
+```
+
 # Modelo de regresión lineal
 
 ```{r}
@@ -578,60 +614,17 @@ coef(lm_fit)
 ```
 
 ```{r}
-library(ggfortify)
 residuals=lm_fit$residuals
 autoplot(lm_fit)
 ```
 
 # Conclusiones preliminares
 
-\#.
-Para el posterior análisis agregamos alguna columna agrupando las variables plantas en plantas bajas y plantas altas para un mejor análisis.
-
 ```{r}
-mhp <- mhp %>%
-  mutate(plantas = ifelse(grepl("planta [2-9]|[1-4]\\d|50", house_type), "plantas altas", "plantas bajas"))
+summary(mhp_train)
 ```
 
-También reamos una columna con el precio medio por distrito en la que salen las variables caro, medio o barato en función del precio del distrito.
 
-```{r}
-mhp <- mhp %>%
-  group_by(district) %>%
-  mutate(precio_distrito = mean(price)) %>%
-  ungroup()
-
-# Calcular los percentiles
-percentiles <- quantile(mhp$precio_distrito, probs = c(0, 1/3, 2/3, 1))
-
-# Asignar etiquetas
-mhp$precio_distrito <- cut(mhp$precio_distrito, breaks = percentiles, labels = c("barato", "medio", "caro"), include.lowest = TRUE)
-```
-
-Volvemos a realizar la división del dataset.
-
-```{r}
-set.seed(108)
-numero_total = nrow(mhp)
-# Porcentajes de train, test y validation
-w_train = .5
-w_test = .25
-w_validation = 1 - (w_train + w_test)
-
-# Todos los índices
-indices = seq(1:numero_total) 
-
-# Muestreo
-indices_train = sample(1:numero_total, numero_total * w_train)
-indices_test = sample(indices[-indices_train], numero_total * w_test)
-indices_validation = indices[-c(indices_train,indices_test)]
-
-# Agrupamos
-
-mhp_train = mhp[indices_train,]
-mhp_test = mhp[indices_test,]
-mhp_validation = mhp[indices_validation,]
-```
 
 
 
@@ -653,12 +646,12 @@ Creamos 3 variables dummy de 3 variables categóricas de si o no.
 dummy_garaje <- model.matrix(~0 + garage,data = train)
 dummy_exterior <- model.matrix(~0 + exterior, data = train)
 dummy_ascensor <- model.matrix(~0 + elevator, data = train)
-dummy_plantas <- model.matrix(~0 + plantas, data = train)
+dummy_tipo_casa <- model.matrix(~0 + tipo_casa, data = train)
 dummy_distrito <- model.matrix(~0 + precio_distrito, data = train)
 ```
 
 ```{r}
-dummy_data <- cbind(train[, c("rooms", "m2")],dummy_exterior,dummy_garaje,dummy_ascensor,dummy_distrito,dummy_plantas)
+dummy_data <- cbind(train[, c("rooms", "m2")],dummy_exterior,dummy_garaje,dummy_ascensor,dummy_distrito,dummy_tipo_casa)
 ```
 
 ```{r}
@@ -712,7 +705,7 @@ test_glm[,2:3]<- scale(test_glm[,2:3])
 
 
 ```{r}
-glm_mhp = glm(formula = cara ~ exterior + garage + elevator + rooms + precio_distrito + plantas,
+glm_mhp = glm(formula = precio_bin ~ exterior + garage + elevator + rooms + precio_distrito + tipo_casa,
                  data = train_glm, 
                  family = binomial)
 summary(glm_mhp)
@@ -729,7 +722,7 @@ head(fitted(glm_mhp))
 
 ```{r}
 predicciones_glm <- ifelse(test = glm_mhp$fitted.values > 0.5, yes = 1, no = 0)
-matriz_confusion_glm <- table(glm_mhp$model$cara, predicciones_glm,
+matriz_confusion_glm <- table(glm_mhp$model$precio_bin, predicciones_glm,
                           dnn = c("observaciones", "predicciones"))
 matriz_confusion_glm
 ```
@@ -790,10 +783,10 @@ precision = rep(0,long)
 for (i in 1:long)
 {
   prediccion_knn_cv =knn.cv(mhp_train[,c("exterior","rooms","m2","elevator", "garage")], 
-                            k=i, cl=mhp_train$cara)
-  accuracy[i] = sum(prediccion_knn_cv == mhp_train$cara) /nrow(mhp_train)
-  recall[i] = sum(prediccion_knn_cv == mhp_train$cara & mhp_train$cara == TRUE) / sum(mhp_train$cara == TRUE)
-  precision[i] = sum(prediccion_knn_cv == mhp_train$cara & prediccion_knn_cv == TRUE) / sum(prediccion_knn_cv == TRUE)
+                            k=i, cl=mhp_train$precio_bin)
+  accuracy[i] = sum(prediccion_knn_cv == mhp_train$precio_bin) /nrow(mhp_train)
+  recall[i] = sum(prediccion_knn_cv == mhp_train$precio_bin & mhp_train$precio_bin == TRUE) / sum(mhp_train$precio_bin == TRUE)
+  precision[i] = sum(prediccion_knn_cv == mhp_train$precio_bin & prediccion_knn_cv == TRUE) / sum(prediccion_knn_cv == TRUE)
   f1score[i] = 2*precision[i]*recall[i]/(precision[i]+recall[i])
 }
 resultados_knn = as.data.frame(cbind(accuracy,f1score,precision,recall))
@@ -820,13 +813,13 @@ Analizando el gráfico no observamos ninguna diferencia, así que cogemos 5 que 
 library(distances)
 # En train
 prediccion_knn5_train =knn.cv(mhp_train[,c("exterior","rooms","m2","elevator", "garage")], 
-                              k=5, cl=mhp_train$cara)
-confusionMatrix(table(prediccion_knn5_train,mhp_train$cara), positive= "1")
+                              k=5, cl=mhp_train$precio_bin)
+confusionMatrix(table(prediccion_knn5_train,mhp_train$precio_bin), positive= "1")
 
 #En test
 prediccion_knn5_test=knn(mhp_train[,c("exterior","rooms","m2","elevator", "garage")], mhp_test[,c("exterior","rooms","m2","elevator", "garage")],
-                         k=5, cl=mhp_train$cara)
-confusionMatrix(table(prediccion_knn5_test,mhp_test$cara), positive= "1")
+                         k=5, cl=mhp_train$precio_bin)
+confusionMatrix(table(prediccion_knn5_test,mhp_test$precio_bin), positive= "1")
 ```
 
 Tras realizar diferentes pruebas quitando variables vemos que si quitamos la variable m2 nos dice que hay muchos empates y no saca nada. Sin embargo, quitando las otras variables varia muy poco el acierto en train y test.
@@ -841,14 +834,14 @@ A continuación hacemos el modelo de arbol de decisión.
 library(rpart)
 library(rpart.plot)
 library(rattle)
-arbol <- rpart(cara ~ garage + elevator + rooms + plantas + precio_distrito, data = mhp_train, control = rpart.control(minsplit = 1))
+arbol <- rpart(precio_bin ~ garage + elevator + rooms + tipo_casa + precio_distrito, data = mhp_train, control = rpart.control(minsplit = 1))
 fancyRpartPlot(arbol, sub = "")
 ```
 Calculamos el número de aciertos y nos sale bastante aceptable.
 
 ```{r}
 tab1 = table(pred = predict(arbol, mhp_test, type = "class"),
-obs = mhp_test$cara)
+obs = mhp_test$precio_bin)
 ntest = nrow(mhp_test)
 acierto1 = sum(diag(tab1))/ntest
 acierto1
@@ -884,7 +877,7 @@ sub = "")
 ```
 ```{r}
 tab2 = table(pred = predict(pruneTREE2, mhp_test, type = "class"),
-obs = mhp_test$cara)
+obs = mhp_test$precio_bin)
 acierto2 = sum(diag(tab2))/ntest
 acierto2
 ```
@@ -897,11 +890,11 @@ prediccion_1 <- predict(arbol, newdata = mhp_train, type = "class")
 ```
 
 ```{r}
-confusionMatrix(prediccion_1, mhp_train[["cara"]])
+confusionMatrix(prediccion_1, mhp_train[["precio_bin"]])
 ```
 
 ```{r}
-mhp_train$cara <- ifelse(mhp_train$cara == "cara", 1, 0)
+mhp_train$cara <- ifelse(mhp_train$cara == "precio_bin", 1, 0)
 ```
 
 
@@ -911,7 +904,7 @@ mhp_train$cara <- ifelse(mhp_train$cara == "cara", 1, 0)
 library(randomForest)
 # Nos quedamos con todas las variables menos barrio porque hay muchas categorias
 classifier = randomForest(x = mhp_train[,c(2,3,4,5,6,7,9)],
-                          y = mhp_train$cara,
+                          y = mhp_train$precio_bin,
                           ntree = 10)
 ```
 
@@ -923,7 +916,7 @@ y_pred = predict(classifier, newdata = mhp_test[,c(2,3,4,5,6,7,9)])
 
 ```{r}
 # Crear la matriz de confusión
-cm = table(mhp_test[,10], y_pred)
+#cm = table(mhp_test[,10], y_pred)
 ```
 
 
