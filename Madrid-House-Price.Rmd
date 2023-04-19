@@ -730,14 +730,6 @@ matriz_confusion_glm <- table(glm_mhp$model$precio_bin, predicciones_glm,
 matriz_confusion_glm
 ```
 
-
-```{r}
-library(effects)
-efectos <- allEffects(glm_mhp)
-plot(efectos)
-```
-
-
 ## KNN
 
 Aplicamos k-means sólo para las variables numéricas. Utilizando la regla del codo vemos que que lo correcto sería coger un k = 4. 
@@ -903,22 +895,50 @@ confusionMatrix(prediccion_1, mhp_train[["precio_bin"]])
 
 ```{r}
 library(randomForest)
-# Nos quedamos con todas las variables menos barrio porque hay muchas categorias
-classifier = randomForest(x = mhp_train[,c(2,3,4,5,6,7,9)],
-                          y = mhp_train$precio_bin,
-                          ntree = 10)
+# Escalar¡mos la columna 4 en train y test
+set.seed(19042023)
+mhp_train_scaled <- mhp_train
+mhp_train_scaled[, 4] <- scale(mhp_train[, 4])
+
+mhp_test_scaled <- mhp_test
+mhp_test_scaled[, 4] <- scale(mhp_test[, 4])
+
+# Nos quedamos con todas las variables menos barrio y distrito porque hay muchas categorias
+#Cogemos solo 10 árboles en el parámetro ntree
+classifier <- randomForest(x = mhp_train_scaled[, c(3, 4, 5, 6, 7, 10,11)],
+                           y = mhp_train_scaled$precio_bin,
+                           ntree = 10)
 ```
 
 ```{r}
 # Predicción de los resultados con el conjunto de testing
-y_pred = predict(classifier, newdata = mhp_test[,c(2,3,4,5,6,7,9)])
+y_pred = predict(classifier, newdata = mhp_test_scaled[,c(3,4,5,6,7,10,11)])
+```
+
+```{r}
+confusionMatrix(y_pred, mhp_test_scaled[["precio_bin"]])
+```
+Ahora probamos con 100 árboles aleatorios para ver si cambia mucho el resultado. 
+
+```{r}
+set.seed(19042022)
+classifier <- randomForest(x = mhp_train_scaled[, c(3, 4, 5, 6, 7, 10,11)],
+                           y = mhp_train_scaled$precio_bin,
+                           ntree = 100)
+```
+
+```{r}
+y_pred = predict(classifier, newdata = mhp_test_scaled[,c(3,4,5,6,7,10,11)])
 ```
 
 
 ```{r}
-# Crear la matriz de confusión
-#cm = table(mhp_test[,10], y_pred)
+confusionMatrix(y_pred, mhp_test_scaled[["precio_bin"]])
 ```
+La precisión del modelo es del 0,9007 y el intervalo de confianza del 95% es (0,8908, 0,9099), lo que indica que podemos estar bastante seguros de que la precisión real del modelo está dentro de este rango. El valor de kappa de 0,8013 indica que hay una buena concordancia entre las predicciones del modelo y las observaciones reales.
+
+Además, la sensibilidad del modelo es del 0,8670 y la especificidad del 0,9343. La tasa de detección es del 0,4335 y la prevalencia es del 0,5000. En general, el modelo tiene un desempeño bastante bueno en la clasificación de las viviendas por encima y por debajo del umbral.
+
 
 
 ## SVM
@@ -930,3 +950,8 @@ y_pred = predict(classifier, newdata = mhp_test[,c(2,3,4,5,6,7,9)])
 # Elección punto de corte
 
 # Redes Bayasianas y/o GAM
+
+```{r}
+library(e1071)
+```
+
