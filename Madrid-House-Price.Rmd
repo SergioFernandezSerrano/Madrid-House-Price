@@ -17,7 +17,7 @@ output:
 knitr::opts_chunk$set(
 	echo = TRUE,
 	include = TRUE,
-	warning = TRUE,
+	warning = FALSE,
 	message = FALSE,
 	fig.align = "center",
 	out.width = "90%"
@@ -46,6 +46,10 @@ library(cluster)
 library(tidyverse)
 library(stringr)
 library(ggfortify)
+library(caret)
+library(Metrics)
+library(factoextra)
+library(NbClust)
 ```
 
 ```{r}
@@ -54,6 +58,8 @@ paste(R.Version()$version.string)
 # Análisis exploratorio inicial
 
 ## Lectura y preparación de los datos
+
+En esta primera etapa cargamos el dataset descargado y hacemos una observación superficial de las variables recogidas y sus características. Se representan también las 10 filas iniciales.
 
 ```{r}
 mhp <- read_csv("house_price_madrid_14_08_2022.csv")
@@ -96,28 +102,7 @@ A continuación, la descripción de cada una de las variables:
   
   - **district**: distrito de Madrid
 
-## Tratamiento de datos faltantes
-
-Convertimos en NA las siguientes observaciones:
-
-  - La casa de 41 habitaciones (probablemente fueran 4 y está mal imputado)
-  
-  - Las que tienen menos de 3 m2 (probablemente mal imputados al usar el punto para separar los miles)
-  
-  - La casa con un precio de 725 (claramente equivocado).
-
-```{r}
-mhp$rooms[mhp$rooms > 40] <- NA
-mhp$m2[mhp$m2 < 3] <- NA
-mhp$price[mhp$price < 1000] <- NA
-```
-
-La variable **house_type_2** tiene 469 filas sin datos. Junto a los añadidos anteriormente son el 3.2% del total. Optamos por eliminar estas filas del dataset.
-
-```{r}
-sum(is.na(mhp))/nrow(mhp)
-mhp <- na.omit(mhp)
-```
+Tras esta primera observación se harán algunas modificaciones en el dataset para transformar a variables de tipo categórico las que correspondan, así como transformar a binarias (1/0) aquellas con sólo dos valores posibles.
 
 ```{r}
 # Preparación de los datos. Convertimos a factores las variables que son categóricas y a 1-0 las binarias.
@@ -140,9 +125,32 @@ mhp$neighborhood <- as.factor(mhp$neighborhood)
 mhp$district <- as.factor(mhp$district)
 ```
 
+## Tratamiento de datos faltantes
+
+Convertimos en NA aquellas observaciones que claramente contienen algun error:
+
+  - La casa de 41 habitaciones (probablemente fueran 4 y esté mal imputado)
+  
+  - Las que tienen menos de 3 m2 (probablemente mal imputados al usar el punto para separar los miles)
+  
+  - La casa con un precio de 725 (claramente equivocado).
+
+```{r}
+mhp$rooms[mhp$rooms > 40] <- NA
+mhp$m2[mhp$m2 < 3] <- NA
+mhp$price[mhp$price < 1000] <- NA
+```
+
+Por otro lado, la variable **house_type_2** tiene 469 filas sin datos. Junto a los NA añadidos en el paso anterior son el 3.2% del total, por lo que optaremos por eliminar estas filas del dataset.
+
+```{r}
+sum(is.na(mhp))/nrow(mhp)
+mhp <- na.omit(mhp)
+```
+
 ## División del dataset
 
-Dividimos el dataset en train, test y validation.
+Para finalizar la preparación de los datos, dividiremos nuestro dataset en tres partes, una de entrenamiento (train), con el que trabajaremos durante todo el análisis, otra de prueba (test) que nos servirá para comprobar la eficacia de los diferentes modelos predictivos que se apliquen, y finalmente uno de validación (validation), que se mantendrá sin usar hasta el último día del proyecto y con el cual validaremos el modelo final.
 
 ```{r}
 set.seed(108)
@@ -171,7 +179,9 @@ mhp_validation = mhp[indices_validation,]
 
 ## Análisis de variables cualitativas
 
-**TIPO DE VIVIENDA**
+Una vez preparado el dataset comenzamos con el análisis de las variables cualitativas, que son las siguientes:
+
+**Tipo de vivienda**
 
 ```{r}
 merge(setNames(as.data.frame(table(mhp_train$house_type)), c("house_type", "count")),
@@ -191,7 +201,9 @@ ggplot(mhp_train, aes(house_type)) +
   theme(plot.title = element_text(hjust = 0.5))
 ```
 
-**EXTERIOR**
+Como era de esperar, las viviendas más habituales son pisos en plantas no demasiado altas (bajos, primeros, segundos...). El número de casas y chalets también es pequeño en proporción.
+
+**Orientación exterior**
 
 ```{r}
 merge(setNames(as.data.frame(table(mhp_train$exterior)), c("exterior", "count")),
@@ -207,7 +219,10 @@ ggplot(mhp_train, aes(exterior)) +
   labs(x = "Exterior", y = "Número de vivienda de viviendas", title = "Viviendas exteriores") +
   theme(plot.title = element_text(hjust = 0.5))
 ```
-**ASCENSOR**
+
+Son una inmensa mayoría los pisos que dan a exterior.
+
+**Ascensor**
 
 ```{r}
 merge(setNames(as.data.frame(table(mhp_train$elevator)), c("elevator", "count")),
@@ -224,7 +239,9 @@ ggplot(mhp_train, aes(elevator)) +
   theme(plot.title = element_text(hjust = 0.5))
 ```
 
-**GARAJE**
+También es más frecuente que tengan ascensor, aunque casi el 30% no lo tienen.
+
+**Garaje**
 
 ```{r}
 merge(setNames(as.data.frame(table(mhp_train$garage)), c("garage", "count")),
@@ -241,7 +258,11 @@ ggplot(mhp_train, aes(garage)) +
   theme(plot.title = element_text(hjust = 0.5))
 ```
 
-**BARRIO**
+También de esperar que la mayoría de pisos no tuvieran garaje incluido.
+
+**Barrio**
+
+Esta variable no será muy útil para el análisis, ya que en muchos casos son descripciones de la vivienda hechas por el usuario, por lo que habría que hacer un tratamiento previo para poder agruparlas. Algo innecesario ya que ese mismo efecto se consigue con el siguiente campo: distritos.
 
 ```{r}
 merge(setNames(as.data.frame(table(mhp_train$neighborhood)), c("neighborhood", "count")),
@@ -252,7 +273,9 @@ merge(setNames(as.data.frame(table(mhp_train$neighborhood)), c("neighborhood", "
   scroll_box(width = "100%", height = "350px")
 ```
 
-**DISTRITO**
+**Distrito**
+
+En este caso los datos si están correctamente recogidos, repartiendo las casas entre los 21 distritos de Madrid.Casi todos con una representación considerable, en lo que destaca el barrio de Salamanca, con casi el doble de viviendas que el segundo que más tiene, Chamberí.
 
 ```{r}
 merge(setNames(as.data.frame(table(mhp_train$district)), c("district", "count")),
@@ -273,7 +296,7 @@ ggplot(mhp_train, aes(district)) +
 
 ## Análisis de variables cuantitativas
 
-**PRECIO**
+**Precio**
 
 ```{r}
 data.frame(summarise(mhp_train,
@@ -303,7 +326,7 @@ ggplot(mhp_train, aes(price)) +
   theme(plot.title = element_text(hjust = 0.5), axis.text.x = element_text(angle = 30))
 ```
 
-**HABITACIONES**
+**Habitaciones**
 
 ```{r}
 data.frame(summarise(mhp_train,
@@ -331,7 +354,7 @@ ggplot(mhp_train, aes(rooms)) +
   theme(plot.title = element_text(hjust = 0.5))
 ```
 
-**M²**
+**m²**
 
 ```{r}
 data.frame(summarise(mhp_train,
@@ -361,6 +384,10 @@ ggplot(mhp_train, aes(m2)) +
 
 # Análisis multivariante
 
+Una vez analizadas todas las variables de forma individual, podemos buscar algunas relaciones entre ellas.
+
+Como se ve en los gráficos inferiores hay una relción fuerte entre el precio, los metros cuadradados y el número de habitaciones.
+
 ```{r}
 plot_grid(
   ggcorrplot(cor(mhp_train %>% select_if(is.numeric)),type = "lower", lab=TRUE),
@@ -383,6 +410,8 @@ plot_grid(
   nrow = 2
 )
 ```
+
+Introduciendo algunas de las variables categóricas se puede observar como varía el precio con la superficie o el número de habitaciones dependiendo de si incluye garaje, ascensor u orientación exterior.
 
 ```{r}
 plot_grid(
@@ -432,6 +461,8 @@ plot_grid(
 )
 ```
 
+Representando boxplot por distrito se ve claramente que los barrios ricos como Salamanca o Chamberí, a parte de tener precios medios más altos, tienen mayor número de viviendas con precios atípicos (por encima), mientras que en el número de habitaciones no se aprecia una diferencia tan notoria.
+
 ```{r}
 ggplot(mhp_train, aes(district, price)) +
   geom_boxplot(fill = "#0BB363") +
@@ -453,21 +484,7 @@ ggplot(mhp_train, aes(district, m2)) +
   theme(plot.title = element_text(hjust = 0.5), axis.text.x = element_text(angle = 30, hjust = 1))
 ```
 
-```{r}
-plot_grid(
-  ggplot(mhp_train, aes(x = m2, y = price, colour = district)) +
-  geom_point() +
-  geom_smooth(method = "lm") +
-  ggtitle('Relación entre el precio y la superficie, por distrito'),
-  
-  ggplot(mhp_train, aes(x = rooms, y = price, colour = district)) +
-  geom_point() +
-  geom_smooth(method = "lm") +
-  ggtitle('Relación entre el precio y las habitaciones, por distrito'),
-  
-  nrow =1
-)
-```
+En las siguientes figuras se representa el precio medio por distrito y como varía con respecto a otras variables de interés.
 
 ```{r}
 mhp_train %>%
@@ -511,31 +528,7 @@ mhp_train %>%
   labs(x = "Distrito", y = "Precio medio")
 ```
 
-## Transformación de variables cuantitativas
-
-```{r}
-plot_grid(
-  
-  ggplot(mhp_train, aes(x = m2, y = price)) +
-  geom_point() +
-  geom_smooth() +
-  ggtitle('Relación entre el precio y los metros cuadrados'),
-  
-  ggplot(mhp_train, aes(x = rooms, y = price)) +
-  geom_point() +
-  geom_smooth() +
-  ggtitle('Relación entre el precio y el múmero de habitaciones'),
-  
-  ggplot(mhp_train, aes(x = rooms, y = m2)) +
-  geom_point() +
-  geom_smooth() +
-  ggtitle('Relación entre los metros cuadrados y el número de habitaciones'),
-  
-  nrow = 2
-)
-```
-
-## Procesado de variables cualitativas
+# Procesado de variables cualitativas
 
 ```{r}
 mhp_train %>%
@@ -556,7 +549,7 @@ mhp_train <- mhp_train %>%
 mhp_train$tipo_casa <- as.factor(mhp_train$tipo_casa)
 ```
 
-También creamos una columna con el precio medio por distrito en la que salen las variables caro, medio o barato en función del precio del distrito.
+También se agruparán los distritos en función del precio medio del mismo: caro, medio o barato.
 
 ```{r}
 mhp_train <- mhp_train %>%
@@ -571,7 +564,7 @@ percentiles <- quantile(mhp_train$precio_distrito, probs = c(0, 1/3, 2/3, 1))
 mhp_train$precio_distrito <- cut(mhp_train$precio_distrito, breaks = percentiles, labels = c("barato", "medio", "caro"), include.lowest = TRUE)
 ```
 
-Creamos nuestra variable target binaria
+Además, de cara a desarrollar algunos modelos, se creará una variable target binaria que dividirá las casas entre "cara" y "barata" (1/0).
 
 ```{r}
 mhp_train$precio_bin <- ifelse(mhp_train$price > median(mhp_train$price), "cara", "barata")
@@ -579,10 +572,9 @@ mhp_train$precio_bin = ifelse(mhp_train$precio_bin == "cara", 1, 0)
 mhp_train$precio_bin = factor(mhp_train$precio_bin, levels = c(1,0))
 ```
 
-
-Aplicamos los cambios también a test.
-
 ```{r}
+# Aplicamos todos los cambios también a test.
+
 # Categorizamos house_type
 mhp_test <- mhp_test %>%
   mutate(tipo_casa = case_when(
@@ -610,8 +602,14 @@ mhp_test$precio_bin = factor(mhp_test$precio_bin, levels = c(1,0))
 
 # Modelo de regresión lineal
 
+Con el dataset ya preparado, se crea un modelo de regresión lineal.
+
+En este caso, tras hacer diversas pruebas se ha optado por introducir sólo 3 variables (tipo_casa, m2 y precio_distrito), alcanzando un R2 de 0.7553.
+
+Esta cifra podía incrementarse algo, sin embargo es a costa de introducir más variables y por tanto más complejidad al modelo, haciéndolo menos explicable.
+
 ```{r}
-lm_fit <- lm(price ~ m2+rooms+exterior+elevator+garage, data=mhp_train)
+lm_fit <- lm(price ~ m2+tipo_casa+precio_distrito, data=mhp_train)
 summary(lm_fit)
 coef(lm_fit)
 ```
@@ -621,15 +619,80 @@ residuals=lm_fit$residuals
 autoplot(lm_fit)
 ```
 
-# Conclusiones preliminares
+Observando los residuos se ve como hay cierta heterocedasticidad y en la gráfica QQ no se ajustan a la normal, por lo que el módelo no es bueno.
 
 ```{r}
-summary(mhp_train)
+# Realizar predicciones en la partición test
+predictions <- predict(lm_fit, newdata = mhp_test)
+
+# Comparar las predicciones con los valores reales
+rmse <- rmse(predictions, mhp_test$price)
+mae <- mae(predictions, mhp_test$price)
+r2 <- R2(predictions, mhp_test$price)
+
+# Imprimir las métricas de evaluación
+cat(paste0("RMSE: ", round(rmse, 2), "\n"))
+cat(paste0("MAE: ", round(mae, 2), "\n"))
+cat(paste0("R-squared: ", round(r2, 2)))
 ```
 
+Un R2 de 0.73 (bastante similar al calculado en train) indica que se explica con esa probabilidad la variabilidad de la variable dependiente, por lo tanto podríamos considerarlo razonablemente útil, sin embargo sería preferible mejorar los valores del error de predicción promedio o el cuadrático.
 
+# Conclusiones preliminares
 
+El análisis realizado hasta el momento ha servido para familiarizarse con el mercado inmobiliario de Madrid (o al menos parte de él) y conoce como se comportan algunas de las variables más relevantes en el valor de las viviendas.
 
+Con estos conocimientos se abordarán nuevos modelos para intentar conseguir mejores predicciones y simultaneamente comprender y desarrollar estos mismos modelos.
+
+```{r}
+str(mhp_train)
+```
+
+# Aprendizaje no supervisado
+
+## K-Means
+
+```{r}
+mhp_train_kmeans <- subset(mhp_train, select = c("price", "m2", "rooms", "elevator", "garage", "exterior"))
+
+mhp_train_kmeans$exterior <- as.numeric(mhp_train_kmeans$exterior)
+mhp_train_kmeans$elevator <- as.numeric(mhp_train_kmeans$elevator)
+mhp_train_kmeans$garage <- as.numeric(mhp_train_kmeans$garage)
+
+# Normalizamos los datos
+mhp_train_kmeans <- scale(mhp_train_kmeans)
+```
+
+Aplicamos k-means sólo para las variables numéricas. Utilizando la regla del codo vemos que que lo correcto sería coger un k = 3. 
+
+```{r}
+fviz_nbclust(mhp_train_kmeans, kmeans, method = "wss")
+fviz_nbclust(mhp_train_kmeans, kmeans, method = "silhouette")
+```
+
+Aplicamos el algoritmo con k = 3 y vemos el gráfico de clusters que nos crea con k-means.
+
+```{r}
+# Definir el número de grupos
+k <- 7
+
+# Ejecutar k-means
+grupos <- kmeans(mhp_train_kmeans, k)
+
+mhp_train$cluster <- as.factor(grupos$cluster)
+
+# Graficar la relación entre las características y los grupos
+ggplot(mhp_train, aes(x=m2, y=price, color=cluster)) + 
+  geom_point() +
+  ggtitle("Grupos de casas en venta") +
+  xlab("Tamaño en m2") +
+  ylab("Precio")
+```
+
+```{r}
+fviz_cluster(grupos, data = mhp_train_kmeans, ellipse.type = "euclid",repel = TRUE,star.plot = TRUE)
+fviz_cluster(grupos, data = mhp_train_kmeans, ellipse.type = "norm")
+```
 
 # Aprendizaje no supervisado
 
@@ -640,21 +703,21 @@ summary(mhp_train)
 Dividimos el dataset quedándonos solo con las columnas numéricas y descartando la columna precio puesto que será de alguna manera nuestra variable dependiente.
 
 ```{r}
-train <- mhp_train[,c(3:7,10,11,12)]
+train_pca <- mhp_train[,c(3:7,10,11,12)]
 ```
 
 Creamos 3 variables dummy de 3 variables categóricas de si o no.
 
 ```{r}
-dummy_garaje <- model.matrix(~0 + garage,data = train)
-dummy_exterior <- model.matrix(~0 + exterior, data = train)
-dummy_ascensor <- model.matrix(~0 + elevator, data = train)
-dummy_tipo_casa <- model.matrix(~0 + tipo_casa, data = train)
-dummy_distrito <- model.matrix(~0 + precio_distrito, data = train)
+dummy_garaje <- model.matrix(~0 + garage,data = train_pca)
+dummy_exterior <- model.matrix(~0 + exterior, data = train_pca)
+dummy_ascensor <- model.matrix(~0 + elevator, data = train_pca)
+dummy_tipo_casa <- model.matrix(~0 + tipo_casa, data = train_pca)
+dummy_distrito <- model.matrix(~0 + precio_distrito, data = train_pca)
 ```
 
 ```{r}
-dummy_data <- cbind(train[, c("rooms", "m2")],dummy_exterior,dummy_garaje,dummy_ascensor,dummy_distrito,dummy_tipo_casa)
+dummy_data <- cbind(train_pca[, c("rooms", "m2")],dummy_exterior,dummy_garaje,dummy_ascensor,dummy_distrito,dummy_tipo_casa)
 ```
 
 ```{r}
@@ -728,40 +791,6 @@ predicciones_glm <- ifelse(test = glm_mhp$fitted.values > 0.5, yes = 1, no = 0)
 matriz_confusion_glm <- table(glm_mhp$model$precio_bin, predicciones_glm,
                           dnn = c("observaciones", "predicciones"))
 matriz_confusion_glm
-```
-
-## KNN
-
-Aplicamos k-means sólo para las variables numéricas. Utilizando la regla del codo vemos que que lo correcto sería coger un k = 4. 
-
-```{r}
-X = mhp_train[,c(4,5)]
-set.seed(6)
-wcss = vector()
-for (i in 1:10){
-  wcss[i] <- sum(kmeans(X, i)$withinss)
-}
-plot(1:10, wcss, type = 'b', main = "Método del codo",
-     xlab = "Número de clusters (k)", ylab = "WCSS(k)")
-```
-
-Aplicamos el algoritmo con k = 3 y vemos el gráfico de clusters que nos crea con k-means.
-```{r}
-# Aplicar el algoritmo de k-means con k óptimo
-library(cluster)
-kmeans <- kmeans(X, 3, iter.max = 300, nstart = 10)
-clusplot(X, 
-         kmeans$cluster,
-         lines = 0,
-         shade = TRUE,
-         color = TRUE,
-         labels = 1,
-         plotchar = FALSE,
-         span = TRUE,
-         main = "Clustering de casas",
-         xlab = "habitaciones",
-         ylab = "m2"
-         )
 ```
 
 ## KNN
