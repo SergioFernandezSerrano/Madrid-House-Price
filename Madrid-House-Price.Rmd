@@ -49,6 +49,7 @@ library(rpart.plot)
 library(rattle)
 library(randomForest)
 library(e1071)
+library(kernlab)
 library(cluster)
 library(tidyverse)
 library(stringr)
@@ -400,17 +401,20 @@ plot_grid(
   ggplot(mhp_train, aes(x = m2, y = price)) +
   geom_point() +
   geom_smooth() +
-  ggtitle('Relación entre el precio y los metros cuadrados'),
+  ggtitle('Reación precio y m²') +
+  theme(plot.title = element_text(hjust = 0.5)),
   
   ggplot(mhp_train, aes(x = rooms, y = price)) +
   geom_point() +
   geom_smooth() +
-  ggtitle('Relación entre el precio y el número de habitaciones'),
+  ggtitle('Reación precio y habitaciones') +
+  theme(plot.title = element_text(hjust = 0.5)), 
   
   ggplot(mhp_train, aes(x = rooms, y = m2)) +
   geom_point() +
   geom_smooth() +
-  ggtitle('Relación entre los metros cuadrados y el número de habitaciones'),
+  ggtitle('Reación m² y habitaciones') +
+  theme(plot.title = element_text(hjust = 0.5)), 
   
   nrow = 2
 )
@@ -1097,7 +1101,6 @@ La precisión del modelo es del 0,9007 y el intervalo de confianza del 95% es (0
 Además, la sensibilidad del modelo es del 0,8670 y la especificidad del 0,9343. La tasa de detección es del 0,4335 y la prevalencia es del 0,5000. En general, el modelo tiene un desempeño bastante bueno en la clasificación de las viviendas por encima y por debajo del umbral.
 
 
-
 ## SVM
 
 Support Vector Machine, algoritmo de aprendizaje supervisado que se utiliza tanto para problemas de clasificación como de regresión. En el caso de la clasificación, el objetivo principal de SVM es encontrar el hiperplano óptimo que separa los datos en diferentes clases. Un hiperplano es un límite de decisión que divide el espacio de características en dos partes, de modo que cada parte contenga puntos de datos de una clase específica. En el caso de la regresión, SVM busca encontrar una función que tenga el menor error de ajuste posible.
@@ -1112,16 +1115,122 @@ El algoritmo SVM funciona de la siguiente manera:
 
 -   Clasificación: Para hacer una predicción en un nuevo punto de datos, el algoritmo SVM evalúa la posición del punto con respecto al hiperplano óptimo. Si el punto está por     encima del hiperplano, se asigna a una clase, y si está por debajo, se asigna a la otra clase.
 
-Para resolver de SVM necesito conocer el kernel y el parámetro de regularización que es una cuota superior sobre las variables duales, en definitiva, un coste. Pasamos a construir el modelo.
+Para resolver de SVM necesito conocer el kernel y el parámetro de regularización que es una cuota superior sobre las variables duales, en definitiva, un coste. Pasamos a construir  un primer el modelo usando un kernel radial RBF.
 
 ```{r}
 library(e1071)
+library(kernlab)
 
+# Entrenamos el modelo SVM  kernel con kernel radial
+
+modelo_svm <- svm(precio_bin ~ rooms + m2 + garage + elevator + tipo_casa + precio_distrito, data = mhp_train, kernel = "radial", cost = 10, scale = TRUE)
+
+# Hacemos predicciones en el conjunto de prueba
+svm_predicciones <- predict(modelo_svm, mhp_test[, c("rooms", "m2", "garage", "elevator", "tipo_casa", "precio_distrito")])
+
+
+# Calculamos la matriz de confusión y la precisión del modelo
+svm_matriz_confusion <- table(Prediccion = svm_predicciones, Real = mhp_test$precio_bin)
+print(svm_matriz_confusion)
+precision <- sum(diag(svm_matriz_confusion)) / sum(svm_matriz_confusion)
+print(paste0("Precisión del modelo SVM: ", round(precision * 100, 2), "%"))
+```
+
+Esto significa que:
+
+-   1669 casas con precio alto fueron clasificadas correctamente como precio alto (verdaderos positivos).
+-   1834 casas con precio bajo fueron clasificadas correctamente como precio bajo (verdaderos negativos).
+-   264 casas con precio alto fueron clasificadas incorrectamente como precio bajo (falsos negativos).
+-   99 casas con precio bajo fueron clasificadas incorrectamente como precio alto (falsos positivos).
+
+La precisión del modelo es del 90.61%.
+
+
+ELECCION DEL KERNEL
+
+La elección del kernel en un modelo SVM depende de la naturaleza y la distribución de los datos. No hay una regla única para seleccionar el kernel, pero aquí hay algunas pautas generales para ayudarte a tomar una decisión:
+
+Kernel lineal: Si tus datos son linealmente separables o la cantidad de atributos es alta en comparación con la cantidad de muestras, entonces un kernel lineal suele funcionar bien. Además, es computacionalmente más eficiente que otros kernels.
+
+Kernel polinomial: Si tus datos tienen una estructura que puede ser capturada por un polinomio de un grado específico, el kernel polinomial podría ser una buena opción. Sin embargo, a medida que aumenta el grado del polinomio, el riesgo de sobreajuste aumenta y la complejidad computacional puede crecer.
+
+Kernel radial (RBF): El kernel radial es una opción popular y versátil en muchos casos, especialmente cuando no se sabe de antemano si los datos son linealmente separables. Puede manejar datos no lineales y complejos. Sin embargo, encontrar los parámetros adecuados (costo y gamma) puede requerir una búsqueda en el espacio de parámetros y, en consecuencia, un mayor tiempo de cómputo.
+
+Kernel sigmoide: El kernel sigmoide es similar a una función de activación de una red neuronal y puede ser una opción si deseas un enfoque similar al de una red neuronal pero con un modelo SVM.
+
+
+Probamos varios KERNELS
+
+Creamos una función entrenar_evaluar_svm() que entrenará y evaluará un modelo SVM utilizando el tipo de kernel especificado en el argumento kernel_type. Luego con lapply() se aplicará esta función a cada tipo de kernel en el vector kernels. La función presentará un matriz de confusión y la precisión para cada tipo de kernel.
+
+```{r}
+# Definir una función para entrenar y evaluar un modelo SVM con un tipo de kernel específico
+entrenar_evaluar_svm <- function(kernel_type) {
+  # Entrenamos el modelo SVM con el kernel especificado
+  varios_modelo_svm <- svm(precio_bin ~ rooms + m2 + garage + elevator + tipo_casa + precio_distrito, data = mhp_train, kernel = kernel_type, cost = 10, scale = TRUE)
+
+  # Hacemos predicciones en el conjunto de prueba
+  varios_svm_predicciones <- predict(varios_modelo_svm, mhp_test[, c("rooms", "m2", "garage", "elevator", "tipo_casa", "precio_distrito")])
+
+  # Calculamos la matriz de confusión y la precisión del modelo
+  varios_svm_matriz_confusion <- table(Prediccion = varios_svm_predicciones, Real = mhp_test$precio_bin)
+  print(varios_svm_matriz_confusion)
+  precision <- sum(diag(varios_svm_matriz_confusion)) / sum(varios_svm_matriz_confusion)
+  print(paste0("Precisión del modelo SVM con kernel ", kernel_type, ": ", round(precision * 100, 2), "%"))
+}
+
+# Probar diferentes tipos de kernel
+kernels <- c("linear", "polynomial", "radial", "sigmoid")
+lapply(kernels, entrenar_evaluar_svm)
+```
+
+Se observa que el KERNEL RADIAL es el que mejor predice, ahora vamos a ajustar algunos parámetros del modelo utilizando la función tune para encontrar los mejores parámetros.
+
+```{r}
+# Entrenar un modelo SVM con diferentes parámetros
+modelo_svm_radial <- svm(precio_bin ~ rooms + m2 + garage + elevator + tipo_casa + precio_distrito, data = mhp_train, kernel = "radial", cost = 10, scale = TRUE)
+
+# Utilizar la función tune() para encontrar los mejores parámetros
+tuned_parameters <- tune(svm, 
+                         precio_bin ~ rooms + m2 + garage + elevator + tipo_casa + precio_distrito,
+                         data = mhp_train,
+                         kernel = "radial",
+                         ranges = list(cost = c(0.1, 1, 10, 100, 1000),
+                                       gamma = c(0.1, 0.5, 1, 2, 5)))
+
+# Entrenar un modelo SVM con los mejores parámetros encontrados
+best_model <- tuned_parameters$best.model
+
+# Hacer predicciones en el conjunto de prueba con el mejor modelo
+best_predictions <- predict(best_model, mhp_test[, c("rooms", "m2", "garage", "elevator", "tipo_casa", "precio_distrito")])
+
+# Calcular la matriz de confusión y la precisión del mejor modelo
+best_matriz_confusion <- table(Prediccion = best_predictions, Real = mhp_test$precio_bin)
+print(best_matriz_confusion)
+best_precision <- sum(diag(best_matriz_confusion)) / sum(best_matriz_confusion)
+print(paste0("Precisión del mejor modelo SVM: ", round(best_precision * 100, 2), "%"))
+```
+La precisión del modelo no mejora del 90.61% y el coste computacional es enorme, vamos a probar a representar los datos para ver si de alguna manera puede tomarse una mejor decisión sobre el Kernel a usar.
+
+```{r}
+mhp_train %>%
+  ggplot(aes(x = m2, y = rooms, color = as.factor(precio_bin))) +
+  geom_point() +
+  facet_grid(elevator ~ garage, labeller = labeller(
+    elevator = c('0' = 'Sin Elevador', '1' = 'Con Elevador'),
+    garage = c('0' = 'Sin Garaje', '1' = 'Con Garaje')
+  )) +
+  labs(title = "Diagrama de dispersión de m2 vs rooms, según garage y elevator",
+       x = "Metros cuadrados",
+       y = "Número de habitaciones",
+       color = "Precio bin") +
+  scale_color_manual(values = c("1" = "#0BB363", "0" = "#DC143C")) +
+  theme_minimal() +
+  theme(plot.title = element_text(hjust = 0.5, face = "bold"),
+        plot.title.position = "plot")
 ```
 
 
-
-# Ajuste de hiperparámetros del modelo
 
 # Evaluación y comparación de modelos
 
