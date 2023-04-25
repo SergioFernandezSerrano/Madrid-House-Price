@@ -57,6 +57,14 @@ library(stringr)
 library(Metrics)
 library(factoextra)
 library(NbClust)
+library(class)
+library(distances)
+library(rpart)
+library(rpart.plot)
+library(rattle)
+library(randomForest)
+library(e1071)
+library(kernlab)
 ```
 
 ```{r}
@@ -673,8 +681,12 @@ str(mhp_train)
 
 El algoritmo K-Means es un método de aprendizaje automático no supervisado utilizado para el análisis de agrupamiento o "clustering". El objetivo principal de este algoritmo es dividir los datos en K grupos (clusters), de modo que los puntos dentro de un mismo grupo sean lo más similares posible.
 
+Por como funciona este método, es habitual utilizarlo en la etapa de EDA para agrupar y etiquetar observaciones con un criterior más científico que el basado en el conocimiento personal del dominio, más que para hacer predicciones (aunque también puede hacerse).
+
+En nuestro lo utilizaremos para comprobar si hay alguna forma mejor de agrupar las casas de como lo hemos hecho anteriormente.
+
 ```{r}
-mhp_train_kmeans <- subset(mhp_train, select = c("price", "m2", "rooms", "elevator", "garage", "exterior"))
+mhp_train_kmeans <- subset(mhp_train, select = c("m2", "rooms", "elevator", "garage", "exterior"))
 
 mhp_train_kmeans$exterior <- as.numeric(mhp_train_kmeans$exterior)
 mhp_train_kmeans$elevator <- as.numeric(mhp_train_kmeans$elevator)
@@ -684,18 +696,18 @@ mhp_train_kmeans$garage <- as.numeric(mhp_train_kmeans$garage)
 mhp_train_kmeans <- scale(mhp_train_kmeans)
 ```
 
-Aplicamos k-means sólo para las variables numéricas. Utilizando la regla del codo vemos que lo correcto sería coger un k = 3. 
+Tras normalizar los datos, aplicamos k-means sólo para las variables numéricas y mediante los siguientes test decidiremos cual es el número óptimo de clusters.
 
 ```{r}
 fviz_nbclust(mhp_train_kmeans, kmeans, method = "wss")
 fviz_nbclust(mhp_train_kmeans, kmeans, method = "silhouette")
 ```
 
-Aplicamos el algoritmo con k = 7 y vemos el gráfico de clusters que nos crea con k-means.
+Utilizando la regla del codo en el gráfico wss podríamos decir que está en el 6, algo que confirma el segundo gráfico. Por lo tanto, aplicamos el modelo con K = 7
 
 ```{r}
 # Definir el número de grupos
-k <- 7
+k <- 6
 
 # Ejecutar k-means
 grupos <- kmeans(mhp_train_kmeans, k)
@@ -716,19 +728,74 @@ fviz_cluster(grupos, data = mhp_train_kmeans, ellipse.type = "euclid",repel = TR
 fviz_cluster(grupos, data = mhp_train_kmeans, ellipse.type = "norm")
 ```
 
+Graficamente es difícil diferenciar las agrupaciones, por lo que en la tabla inferior obtenemos los precios medios de cada cluster, donde se puede apreciar que la gran mayoría de agrupaciones son coherentes (salvo tal vez el 2 y el 3 que son muy similares).
+
+También se muestra el tipo de casa y el distrito predominante en cada cluster.
+
+```{r}
+# Precio medio por cluster
+mhp_train %>%
+  group_by(cluster) %>%
+  summarise(precio_medio = mean(price))
+
+# Tipo de casa predominante por cluster
+mhp_train %>%
+  group_by(cluster, tipo_casa) %>%
+  summarise(frecuencia = n()) %>%
+  arrange(cluster, desc(frecuencia)) %>%
+  slice(1) %>%
+  select(cluster, tipo_casa_predominante = tipo_casa)
+
+# Distrito predominante por cluster
+mhp_train %>%
+  group_by(cluster, district) %>%
+  summarise(frecuencia = n()) %>%
+  arrange(cluster, desc(frecuencia)) %>%
+  slice(1) %>%
+  select(cluster, distrito_predominante = district)
+```
+
+Sabemos que tanto la regla del codo como cualquier otro método para definir el número de clusters no siempre es adecuada, por lo que a continuación se prueba con un bucle que prueba con número de clusters menores que 6 y muestra las agrupaciones por precio y tipo de piso anteriores.
+
+```{r}
+# Ejecuta k-means para diferentes valores de K
+for (k in 2:6) {
+  # Ejecutar k-means
+  grupos <- kmeans(mhp_train_kmeans, centers = k)
+  mhp_train$cluster <- as.factor(grupos$cluster)
+  
+  print(k)
+  
+  print(mhp_train %>%
+  group_by(cluster) %>%
+  summarise(precio_medio = mean(price)))
+  
+  print(mhp_train %>%
+  group_by(cluster, tipo_casa) %>%
+  summarise(frecuencia = n()) %>%
+  arrange(cluster, desc(frecuencia)) %>%
+  slice(1) %>%
+  select(cluster, tipo_casa_predominante = tipo_casa))
+}
+```
+
+Observando las diferencias entre los diferentes modelos, el número de clusters que mejor diferencia las casas por su precio es 3, algo que encaja con la presunción que inicial que hicimos para dividir los tipos de casa en 3 tipos.
+
+Si observamos además el tipo de casas más común por cluster, casi siempre es piso (salvo en los casos de clusters con muy poco precio medio, que es sótano), lo cual aunque tiene sentido porque este tipo es claramente mayoritario en todo el dataset, no nos permite apreciar a simple vista donde se acumulan el resto de viviendas.
+
+Por lo tanto, entre los datos extraídos del análisis de clusters y el conocimiento previo que teníamos del dominio, tiene sentido mantener los 3 tipos de viviendas principales como variable para los siguientes modelos (sótano, piso y casa).
+
 # Técnicas de reducción de la dimensionalidad
 
 ## PCA
 
-El Análisis de Componentes Principales es una técnica de reducción de la dimensionalidad que se utiliza para transformar un conjunto de datos de múltiples variables en un nuevo conjunto de datos con un número menor de variables cuyo principal objetivo es simplificar la representación de datos mientras se conserva la mayor cantidad de información y variabilidad posible identificando patrones y estructuras subyacentes reduciendo la multicolinealidad y el sobreajuste.
+El Análisis de Componentes Principales es una técnica de reducción de la dimensionalidad que se utiliza para transformar un conjunto de datos de múltiples variables en un nuevo conjunto de datos con un número menor de variables cuyo principal objetivo es simplificar la representación de datos mientras se conserva la mayor cantidad de información y variabilidad posible identificando patrones y estructuras subyacentes, reduciendo la multicolinealidad y el sobreajuste.
 
-Dividimos el dataset quedándonos solo con las columnas numéricas y descartando la columna precio puesto que será de alguna manera nuestra variable dependiente.
+PAra nuestro dataset, seleccionaremos las columnas numéricas, descartando la columna precio puesto que será de alguna manera nuestra variable dependiente. Además creamos 3 variables dummy usando variables categóricas de tipo 0|1.
 
 ```{r}
 train_pca <- mhp_train[,c(3:7,10,11,12)]
 ```
-
-Creamos 3 variables dummy usando variables categóricas de tipo 0|1.
 
 ```{r}
 dummy_garaje <- model.matrix(~0 + garage,data = train_pca)
@@ -745,8 +812,8 @@ dummy_data <- cbind(train_pca[, c("rooms", "m2")],dummy_exterior,dummy_garaje,du
 ```{r}
 prcomp(dummy_data)
 ```
-Podemos observar que en la PC1 lleva un peso casi de 100 la variable m2. 
-En PC2 pasa lo mismo con la variable rooms. En el resto de PCs el análisis de componentes principales está algo más repartido.
+
+Podemos observar que en la PC1 lleva un peso casi de 100 la variable m2, mientras que en PC2 pasa lo mismo con la variable rooms. En el resto de PCs el análisis de componentes principales está algo más repartido.
 
 ```{r}
 summary(prcomp(dummy_data))
@@ -757,24 +824,28 @@ Si nos fijamos vemos que la PC1 está explicada casi al 100% por los m2. En nues
 ```{r}
 prcomp(dummy_data, scale = T)
 ```
-Tras escalar las variables podemos observar que están mucho más repartidos los pesos en las componentes principales debido a que estás asegurando que todas las variables tengan la misma importancia en el análisis, independientemente de sus escalas originales y unidades de medida. Con esto evitas el dominio de variables con mayor magnitud y mejoras la interpretación de resultados. 
 
+Tras escalar las variables podemos observar que están mucho más repartidos los pesos en las componentes principales debido a que estás asegurando que todas las variables tengan la misma importancia en el análisis, independientemente de sus escalas originales y unidades de medida. Con esto evitas el dominio de variables con mayor magnitud y mejoras la interpretación de resultados. 
 
 ```{r}
 pca_result <- prcomp(dummy_data, center = TRUE, scale = TRUE)
 summary(pca_result)
 ```
-Observamos que con PC6 ya llegamos al 80% de la proporción de varianza explicada pero vemos algunos saltos interesantes. Para ver cuantas componentes explican el modelo hacemos la regla de codo, método heurístico para determinar el número óptimo de clusters en un conjunto de datos.
+
+Observamos que con PC6 ya llegamos al 88% de la proporción de varianza explicada pero vemos algunos saltos interesantes. Para ver cuantas componentes explican el modelo hacemos la regla de codo, método heurístico para determinar el número óptimo de clusters en un conjunto de datos.
 
 ```{r}
 plot(pca_result,type = "l",
      main="Variance explained by PCA")
 ```
+
 Al observar el gráfico vemos que la forma del codo sería en la 6|7 aunque  el gráfico no es muy claro. 
 
 ```{r}
 plot(pca_result, main = "Gráfico PCA")
 ```
+
+A modo de ejercicio para comprender el funcionamiento de PCA puede resultar útil hacer estos cálculos, sin embargo para el dataset en cuestión ya se pueden formar modelos robustos con muy pocas variables (los m2 de superficie, por ejemplo, ya son suficientes para predecir un gran porcentaje de precios).
 
 # Aprendizaje supervisado
 
@@ -856,7 +927,6 @@ Algunas ventajas del algoritmo KNN son su simplicidad, su capacidad para manejar
 Procedemos al cálculo de este modelo e intentamos ver si hay un número correcto de k-vecinos que podemos usar.
 
 ```{r}
-library(class)
 long = 15
 accuracy = rep(0,long)
 f1score = rep(0,long)
@@ -895,7 +965,6 @@ Tratamos de encontrar el valor óptimo de k utilizando validación cruzada. Se c
 Pasamos a realizar predicciones en el conjunto de datos de entrenamiento y en el de test además de realizar la matriz de confusión.
 
 ```{r}
-library(distances)
 # En train
 prediccion_knn5_train =knn.cv(mhp_train[,c("exterior","rooms","m2","elevator", "garage")], 
                               k=5, cl=mhp_train$precio_bin)
@@ -932,9 +1001,6 @@ Algunas características importantes de los árboles de decisión son la interpr
 A continuación hacemos el modelo de arbol de decisión. 
 
 ```{r}
-library(rpart)
-library(rpart.plot)
-library(rattle)
 arbol <- rpart(precio_bin ~ garage + elevator + rooms + tipo_casa + precio_distrito, data = mhp_train, control = rpart.control(minsplit = 1))
 fancyRpartPlot(arbol, sub = "")
 ```
@@ -1056,7 +1122,6 @@ El funcionamiento de un algoritmo Random Forest sería el siguiente:
 Pasamos a construir el modelo comenzando con 10 árboles aleatórios.
 
 ```{r}
-library(randomForest)
 # Escalamos la columna 4 en train y test
 set.seed(19042023)
 mhp_train_scaled <- mhp_train
@@ -1119,9 +1184,6 @@ El algoritmo SVM funciona de la siguiente manera:
 Para resolver de SVM necesito conocer el kernel y el parámetro de regularización que es una cuota superior sobre las variables duales, en definitiva, un coste. Pasamos a construir  un primer el modelo usando un kernel radial RBF.
 
 ```{r}
-library(e1071)
-library(kernlab)
-
 # Estandarizamos las variables numéricas "m2" y "rooms"
 mhp_train$m2_estandarizado <- scale(mhp_train$m2)
 mhp_train$rooms_estandarizado <- scale(mhp_train$rooms)
@@ -1263,14 +1325,11 @@ resultados <- cbind(mhp_test[, c("rooms_estandarizado", "m2_estandarizado", "gar
 pairs(resultados, col = as.integer(resultados$svm_predicciones) + 1)
 ```
 
-
-
-
 # Evaluación y comparación de modelos
 
 # Elección punto de corte
 
-# Redes Bayasianas y/o GAM
+
 
 
 
