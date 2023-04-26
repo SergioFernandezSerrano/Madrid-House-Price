@@ -37,6 +37,7 @@ library(tidyr)
 library(kableExtra)
 library(ggplot2)
 library(GGally)
+library(gridExtra)
 library(cowplot)
 library(ggcorrplot)
 library(gmodels)
@@ -45,26 +46,20 @@ library(ggfortify)
 library(scales)
 library(class)
 library(distances)
+library(visreg)
 library(rpart)
 library(rpart.plot)
 library(rattle)
 library(randomForest)
 library(e1071)
 library(kernlab)
+library(pROC)
 library(cluster)
 library(tidyverse)
 library(stringr)
 library(Metrics)
 library(factoextra)
 library(NbClust)
-library(class)
-library(distances)
-library(rpart)
-library(rpart.plot)
-library(rattle)
-library(randomForest)
-library(e1071)
-library(kernlab)
 ```
 
 ```{r}
@@ -333,11 +328,10 @@ ggplot(mhp_train, aes(y = price)) +
 
 ```{r}
 ggplot(mhp_train, aes(price)) +
-  geom_histogram(aes(y=..density..), bins = 50, position = "dodge", fill = "#0BB363") +
-  geom_density(alpha=.3, fill = "red") +
+  geom_histogram(aes(y = ..count..), bins = 50, position = "dodge", fill = "#0BB363") +
   labs(x = "Precio", y = "Número de viviendas", title = "Viviendas por Precio") +
-  scale_x_continuous(breaks = pretty(mhp_train$price, n = 10),labels = comma_format()) +
-  scale_y_continuous(labels = comma_format()) +
+  scale_x_continuous(breaks = pretty(mhp_train$price, n = 10), labels = comma_format()) +
+  scale_y_continuous(labels = function(x) sprintf("%.0f", x)) +
   theme(plot.title = element_text(hjust = 0.5), axis.text.x = element_text(angle = 30))
 ```
 
@@ -391,7 +385,7 @@ ggplot(mhp_train, aes(y = m2)) +
 
 ```{r}
 ggplot(mhp_train, aes(m2)) +
-  geom_histogram(aes(y=..density..), bins = 50, position = "dodge", fill = "#0BB363") +
+  geom_histogram(aes(y=..count..), bins = 50, position = "dodge", fill = "#0BB363") +
   geom_density(alpha=.3, fill = "red") +
   labs(x = "Metros cuadrados", y = "Número de viviendas", title = "Viviendas por metros cuadrados") +
   theme(plot.title = element_text(hjust = 0.5))
@@ -437,12 +431,14 @@ plot_grid(
   geom_point() +
   geom_smooth(method = "lm") +
   scale_colour_manual(values = c("1" = "#0BB363", "0" = "#DC143C")) +
+  scale_y_continuous(labels = scales::unit_format(unit = "M", scale = 1e-6)) +
   ggtitle('Rel. precio-superficie, exterior') ,
   
   ggplot(mhp_train, aes(x = rooms, y = price, colour = exterior)) +
   geom_point() +
   geom_smooth(method = "lm") +
   scale_colour_manual(values = c("1" = "#0BB363", "0" = "#DC143C")) + 
+  scale_y_continuous(labels = scales::unit_format(unit = "M", scale = 1e-6)) +
   ggtitle('Rel. precio-habitaciones, exterior') ,
   
   nrow =1
@@ -455,12 +451,14 @@ plot_grid(
   geom_point() +
   geom_smooth(method = "lm") +
   scale_colour_manual(values = c("1" = "#0BB363", "0" = "#DC143C")) +
+  scale_y_continuous(labels = scales::unit_format(unit = "M", scale = 1e-6)) +
   ggtitle('Rel. precio-superficie, ascensor'),
   
   ggplot(mhp_train, aes(x = rooms, y = price, colour = elevator)) +
   geom_point() +
   geom_smooth(method = "lm") +
   scale_colour_manual(values = c("1" = "#0BB363", "0" = "#DC143C")) +
+  scale_y_continuous(labels = scales::unit_format(unit = "M", scale = 1e-6)) +
   ggtitle('Rel. precio-habitación, ascensor'),
   
   nrow =1
@@ -473,12 +471,14 @@ plot_grid(
   geom_point() +
   geom_smooth(method = "lm") +
   scale_colour_manual(values = c("1" = "#0BB363", "0" = "#DC143C")) +
+  scale_y_continuous(labels = scales::unit_format(unit = "M", scale = 1e-6)) +
   ggtitle('Rel. precio-superficie, garaje'),
   
   ggplot(mhp_train, aes(x = rooms, y = price, colour = garage)) +
   geom_point() +
   geom_smooth(method = "lm") +
   scale_colour_manual(values = c("1" = "#0BB363", "0" = "#DC143C")) +
+  scale_y_continuous(labels = scales::unit_format(unit = "M", scale = 1e-6)) +
   ggtitle('Rel. precio-habitaciones, garaje'),
   
   nrow =1
@@ -491,6 +491,7 @@ Representando boxplot por distrito se ve claramente que los barrios ricos como S
 ggplot(mhp_train, aes(district, price)) +
   geom_boxplot(fill = "#0BB363") +
   labs(y = "Precio", title = "Boxplot de precios por distrito") +
+  scale_y_continuous(labels = scales::unit_format(unit = "M", scale = 1e-6)) +
   theme(plot.title = element_text(hjust = 0.5), axis.text.x = element_text(angle = 30, hjust = 1))
 ```
 
@@ -516,7 +517,8 @@ mhp_train %>%
   summarize(avg_price = mean(price)) %>%
   ggplot(aes(x = m2, y = avg_price)) + 
   geom_point(size = 0.5) +
-  facet_wrap(~ district)
+  facet_wrap(~ district) + 
+  scale_y_continuous(labels = scales::unit_format(unit = "M", scale = 1e-6))
 ```
 
 ```{r}
@@ -528,7 +530,8 @@ mhp_train %>%
   scale_fill_manual(values = c("1" = "#0BB363", "0" = "#DC143C")) +
   ggtitle("Precio medio por distrito y exterior") +
   theme(plot.title = element_text(hjust = 0.5), axis.text.x = element_text(angle = 30, hjust = 1)) + 
-  labs(x = "Distrito", y = "Precio medio")
+  labs(x = "Distrito", y = "Precio medio") + 
+  scale_y_continuous(labels = unit_format(unit = "M", scale = 1e-6))
 ```
 
 ```{r}
@@ -540,7 +543,8 @@ mhp_train %>%
   scale_fill_manual(values = c("1" = "#0BB363", "0" = "#DC143C")) +
   ggtitle("Precio medio por distrito y ascensor") +
   theme(plot.title = element_text(hjust = 0.5), axis.text.x = element_text(angle = 30, hjust = 1)) + 
-  labs(x = "Distrito", y = "Precio medio")
+  labs(x = "Distrito", y = "Precio medio") + 
+  scale_y_continuous(labels = unit_format(unit = "M", scale = 1e-6))
 ```
 
 ```{r}
@@ -552,7 +556,8 @@ mhp_train %>%
   scale_fill_manual(values = c("1" = "#0BB363", "0" = "#DC143C")) +
   ggtitle("Precio medio por distrito y garaje") +
   theme(plot.title = element_text(hjust = 0.5), axis.text.x = element_text(angle = 30, hjust = 1)) + 
-  labs(x = "Distrito", y = "Precio medio")
+  labs(x = "Distrito", y = "Precio medio") + 
+  scale_y_continuous(labels = unit_format(unit = "M", scale = 1e-6))
 ```
 
 # Procesado de variables cualitativas
@@ -703,7 +708,7 @@ fviz_nbclust(mhp_train_kmeans, kmeans, method = "wss")
 fviz_nbclust(mhp_train_kmeans, kmeans, method = "silhouette")
 ```
 
-Utilizando la regla del codo en el gráfico wss podríamos decir que está en el 6, algo que confirma el segundo gráfico. Por lo tanto, aplicamos el modelo con K = 7
+Utilizando la regla del codo en el gráfico wss podríamos decir que está en el 6, algo que confirma el segundo gráfico. Por lo tanto, aplicamos el modelo con K = 6
 
 ```{r}
 # Definir el número de grupos
@@ -834,16 +839,22 @@ summary(pca_result)
 
 Observamos que con PC6 ya llegamos al 88% de la proporción de varianza explicada pero vemos algunos saltos interesantes. Para ver cuantas componentes explican el modelo hacemos la regla de codo, método heurístico para determinar el número óptimo de clusters en un conjunto de datos.
 
-```{r}
-plot(pca_result,type = "l",
-     main="Variance explained by PCA")
-```
-
 Al observar el gráfico vemos que la forma del codo sería en la 6|7 aunque  el gráfico no es muy claro. 
 
 ```{r}
-plot(pca_result, main = "Gráfico PCA")
+summary_pca <- summary(pca_result)
+var_exp <- summary_pca$importance[2,]
+
+barplot(var_exp, col = "#0BB363",
+        main = "Gráfico PCA - Variance explained",
+        xlab = "Principal Components",
+        ylab = "Proportion of Variance Explained")
+
+lines(var_exp, col = "#DC143C", type = "l", lwd = 2)
+
+points(var_exp, col = "#DC143C", pch = 20, cex = 1.2)
 ```
+
 
 A modo de ejercicio para comprender el funcionamiento de PCA puede resultar útil hacer estos cálculos, sin embargo para el dataset en cuestión ya se pueden formar modelos robustos con muy pocas variables (los m2 de superficie, por ejemplo, ya son suficientes para predecir un gran porcentaje de precios).
 
@@ -885,10 +896,26 @@ head(predict(glm_mhp))
 Esto sirve para predecir la probabilidad logit ajustado previamente y para mostrar las primeras seis predicciones. Cada número representa la probabilidad logit de que la variable dependiente "precio_bin" sea igual a 1 para cada observación en el conjunto de datos.
 
 ```{r}
+ajustados <- fitted(glm_mhp)
 head(fitted(glm_mhp))
 ```
 
 Aquí obtenemos las probabilidades ajustadas que representan las probabilidades estimadas de que la variable dependiente "precio_bin" sea igual a 1 para cada observación en el conjunto de datos.
+
+Gráficos de residuales: Estos gráficos permiten evaluar la calidad del ajuste del modelo. Puedes trazar residuales de Pearson, deviance, o residuales estandarizados frente a las predicciones ajustadas o valores ajustados para examinar si hay patrones en los residuales. Un buen ajuste del modelo no mostrará patrones claros en los residuales.
+
+```{r}
+residuales <- residuals(glm_mhp, type = "pearson")
+head(residuales)
+```
+
+```{r}
+data_residuales <- data.frame(Residuales = residuales, Ajustados = ajustados)
+ggplot(data_residuales, aes(x = Ajustados, y = Residuales)) +
+  geom_point() +
+  geom_hline(yintercept = 0, linetype = "dashed") +
+  labs(title = "Gráfico de residuales", x = "Valores ajustados", y = "Residuales") + ylim(-10,10)
+```
 
 ```{r}
 predicciones_glm <- ifelse(test = glm_mhp$fitted.values > 0.5, no = 0, yes = 1)
@@ -901,13 +928,13 @@ Finalmente generamos predicciones binarias basadas en las probabilidades ajustad
 
 La matriz se lee de la siguiente manera:
 
--   Verdaderos negativos (VN): La esquina superior izquierda representa el número de observaciones clasificadas correctamente como "0" (clase negativa). Esto significa que el modelo predijo correctamente 3449 casos como "0", es decir, barata.
+-   Verdaderos negativos (VN): La esquina superior izquierda (3265) representa el número de observaciones clasificadas correctamente como "0" (clase negativa). Esto significa que el modelo predijo correctamente 3265 casos como "0".
 
--   Falsos positivos (FP): La esquina superior derecha representa el número de observaciones que en realidad eran "0" pero fueron clasificadas incorrectamente como "1" (clase positiva) por el modelo. El modelo cometió un error en 414 casos al clasificarlos como caras.
+-   Falsos positivos (FP): La esquina superior derecha (598) representa el número de observaciones que en realidad eran "0" pero fueron clasificadas incorrectamente como "1" (clase positiva) por el modelo. El modelo cometió un error en 598 casos al clasificarlos como "1".
 
--   Falsos negativos (FN): La esquina inferior izquierda representa el número de observaciones que en realidad eran "1" pero fueron clasificadas incorrectamente como "0" por el modelo. El modelo cometió un error en 329 casos al clasificarlos como baratas.
+-   Falsos negativos (FN): La esquina inferior izquierda (501) representa el número de observaciones que en realidad eran "1" pero fueron clasificadas incorrectamente como "0" por el modelo. El modelo cometió un error en 501 casos al clasificarlos como "0".
 
--   Verdaderos positivos (VP): La esquina inferior derecha representa el número de observaciones clasificadas correctamente como "1". Esto significa que el modelo predijo correctamente 3540 viviendas caras.
+-   Verdaderos positivos (VP): La esquina inferior derecha (3368) representa el número de observaciones clasificadas correctamente como "1". Esto significa que el modelo predijo correctamente 3368 casos como "1".
 
 ## KNN
 
@@ -972,7 +999,7 @@ La matriz de confusión en train nos muestra la cantidad de predicciones correct
 
 -   Accuracy (exactitud): 0.8482. Es la proporción de predicciones correctas en el conjunto de entrenamiento. En otras palabras, el modelo KNN clasifica correctamente el 84.82% de las observaciones del conjunto de entrenamiento.
 
--   Kappa: 0.6963. El índice kappa mide la concordancia entre las predicciones y los valores reales. Un kappa de 1 indica una concordancia perfecta, mientras que un kappa de     0 indica una concordancia totalmente aleatoria. Nuestro kappa de 0.6963 muestra una buena concordancia entre las predicciones y los valores reales en el conjunto de          entrenamiento.
+-   Kappa: 0.6963. El índice kappa mide la concordancia entre las predicciones y los valores reales. Un kappa de 1 indica una concordancia perfecta, mientras que un kappa de 0 indica una concordancia totalmente aleatoria. Nuestro kappa de 0.6963 muestra una buena concordancia entre las predicciones y los valores reales en el conjunto de entrenamiento.
 
 -   Mcnemar's Test P-Value: 0.003201. Esta prueba evalúa si hay una diferencia significativa entre las predicciones falsas positivas y las predicciones falsas negativas. 
 
@@ -1007,11 +1034,11 @@ acierto1 = sum(diag(tab1))/ntest
 acierto1
 ```
 
-Siguiendo con la validación del modelo podemos usar las funciones printcp y plotcp que se utilizan para analizar la complejidad y el rendimiento usando el "pruning" o poda de ramas del arbol que a menudo reduce su complejidad y permite una mejor generalización del mismo disminuyendo el subreajuste.
+Siguiendo con la validación del modelo podemos usar las funciones *printcp* y *plotcp* que se utilizan para analizar la complejidad y el rendimiento usando el "pruning" o poda de ramas del arbol que a menudo reduce su complejidad y permite una mejor generalización del mismo disminuyendo el subreajuste.
 
-La función printcp es una función que muestra una tabla que contiene información sobre la complejidad y la tasa de error en diferentes niveles de tamaño del árbol proporcionando una visión general de cómo cambia el rendimiento a medida que aumenta la complejidad. El valor de cp ha de ser tal que la tasa de error de validación cruzada sea mínima.
+La función **printcp** es una función que muestra una tabla que contiene información sobre la complejidad y la tasa de error en diferentes niveles de tamaño del árbol proporcionando una visión general de cómo cambia el rendimiento a medida que aumenta la complejidad. El valor de cp ha de ser tal que la tasa de error de validación cruzada sea mínima.
 
-La función plotcp crea un gráfico de la tasa de error. Este gráfico es útil para visualizar cómo se comporta el rendimiento del árbol a medida que aumenta su tamaño y ayuda a decidir qué tamaño de árbol es el más apropiado para el problema en cuestión.
+La función **plotcp** crea un gráfico de la tasa de error. Este gráfico es útil para visualizar cómo se comporta el rendimiento del árbol a medida que aumenta su tamaño y ayuda a decidir qué tamaño de árbol es el más apropiado para el problema en cuestión.
 
 ```{r}
 printcp(arbol)
@@ -1035,7 +1062,7 @@ arbol$cptable[which.min(arbol$cptable[, "xerror"]),
 "CP"]
 ```
 
-El propósito es identificar el mejor árbol de decisión con respecto a su capacidad de generalización en datos no vistos. La función which.min() devuelve el índice del valor mínimo en la columna "xerror" de la tabla de complejidad cptable del árbol de decisión. Luego, con ese índice, se extrae el valor correspondiente de la columna "CP" en la tabla de complejidad.
+El propósito es identificar el mejor árbol de decisión con respecto a su capacidad de generalización en datos no vistos. La función **which.min()** devuelve el índice del valor mínimo en la columna "xerror" de la tabla de complejidad cptable del árbol de decisión. Luego, con ese índice, se extrae el valor correspondiente de la columna "CP" en la tabla de complejidad.
 
 
 ```{r}
@@ -1089,7 +1116,7 @@ También obtenemos:
 -   Specificity (especificidad): 0.8400. Mide la proporción de casos negativos que se identificaron correctamente. Un valor más alto es mejor.
 -   Pos Pred Value (valor predictivo positivo): 0.8398. Mide la proporción de predicciones positivas que son realmente positivas. Un valor más alto es mejor.
 -   Neg Pred Value (valor predictivo negativo): 0.8404. Mide la proporción de predicciones negativas que son realmente negativas. Un valor más alto es mejor.
--   Mcnemar's Test P-Value: 0.9773. Esta prueba compara las diferencias entre los falsos positivos y los falsos negativos. Un valor alto de "p" (como en este caso) sugiere       que no hay una diferencia significativa entre ellos.
+-   Mcnemar's Test P-Value: 0.9773. Esta prueba compara las diferencias entre los falsos positivos y los falsos negativos. Un valor alto de "p" (como en este caso) sugiere que no hay una diferencia significativa entre ellos.
 
 En resumen, este modelo de árbol de decisión podado tiene una exactitud del 84.01% y un coeficiente kappa de 0.6803, lo que indica un buen rendimiento en la clasificación.
 
@@ -1119,8 +1146,8 @@ El funcionamiento de un algoritmo Random Forest sería el siguiente:
 -   Seleccionar muestras de arranque: El algoritmo selecciona aleatoriamente un subconjunto de muestras del conjunto de datos de entrenamiento, con reemplazo. 
     Esto significa que una muestra puede ser seleccionada más de una vez.
 
--   Crear un árbol de decisión: Se crea un árbol de decisión utilizando el subconjunto de muestras seleccionado. Durante la construcción del árbol, en cada división del nodo,     se selecciona un subconjunto aleatorio de características como candidatas para la división. 
-    La mejor división se elige en función de la medida de impureza como la entropía o el índice de Gini. Esto introduce aleatoriedad adicional en el proceso, lo que ayuda a      reducir la correlación entre los árboles.
+-   Crear un árbol de decisión: Se crea un árbol de decisión utilizando el subconjunto de muestras seleccionado. Durante la construcción del árbol, en cada división del nodo, se selecciona un subconjunto aleatorio de características como candidatas para la división. 
+    La mejor división se elige en función de la medida de impureza como la entropía o el índice de Gini. Esto introduce aleatoriedad adicional en el proceso, lo que ayuda a reducir la correlación entre los árboles.
 
 -   Repetir: El proceso se repite varias veces (número de árboles especificado) para construir un conjunto de árboles de decisión.
 
@@ -1318,20 +1345,18 @@ print(paste0("Precisión del mejor modelo SVM: ", round(best_precision * 100, 2)
 ```
 La precisión del modelo no mejora del 90.77% anterior y el coste computacional en la busqueda del mejor modelo es enorme.  Parece que los parámetros del modelo elegidos durante el proceso de afinación no han sido los correctos. La afinación e hiperparámetros implica buscar la mejor combinación de hiperparámetros dentro del rango de búsqueda que se proporciona. Si el rango de búsqueda no contiene la combinación óptima de hiperparámetros, el proceso de afinación podría terminar eligiendo una combinación subóptima que resulte en un rendimiento inferior.
 
-\
+# Evaluación y comparación de modelos
 
-No es posible representar directamente el hiperplano en un gráfico bidimensional. Sin embargo, podemos intentar visualizar pares de variables y su relación con la clasificación en el espacio bidimensional. Vamos a representar las variables m2_estandarizado y rooms_estandarizado.
-
+Tras la realización de todos los modelos, juntamos los mejores resultados en una sóla tabla para mejor comparabilidad:
 
 ```{r}
-# Crear un nuevo dataframe con las variables y las predicciones
-resultados <- cbind(mhp_test[, c("rooms_estandarizado", "m2_estandarizado", "garage", "elevator", "tipo_casa", "precio_distrito")], svm_predicciones)
 
-# Graficar pares de variables con colores según la predicción
-pairs(resultados, col = as.integer(resultados$svm_predicciones) + 1)
 ```
 
-# Evaluación y comparación de modelos
+
+### K-fold Cross Validation
+
+### N-fold Cross Validation
 
 # Elección punto de corte
 
