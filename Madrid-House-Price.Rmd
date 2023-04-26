@@ -851,43 +851,38 @@ A modo de ejercicio para comprender el funcionamiento de PCA puede resultar úti
 
 ## GLM
 
-En aprendizaje automático Generalized Linear Models se refiere a una clase de modelos lineales que se utilizan para predecir una variable de respuesta a partir de una o más variables explicativas.
-Se compone de tres componentes, Variable de respuesta, Función de enlace y Función lineal sistemática y son muy útiles para utilizarse en clasificación, regresión y problemas de predicción.
+En aprendizaje automático, GLM (Generalized Linear Models) se refiere a una clase de modelos lineales que se utilizan para predecir una variable respuesta a partir de una o más variables explicativas. Tiene tres componentes: Variable respuesta, función de enlace y función lineal sistemática, y son muy útiles para utilizarse en clasificación, regresión y problemas de predicción.
 
-Aplicado a nuestro dataset nos ayudará a predecir el precio de las casas. Para ello realizamos las siguientes trasnformaciones.
-Primero seleccionamos las variables.
-
+Aplicado a nuestro dataset, lo utilizaremos para predecir el precio binario de las casas (cara/barata).
 
 ```{r}
 train_glm <- mhp_train[,c(3:7,10,11,12)]
 test_glm <- mhp_test[,c(3:7,10,11,12)]
 ```
 
-Escalamos las columnas de m2 y rooms.
-
 ```{r}
 train_glm[,2:3]<- scale(train_glm[,2:3])
 test_glm[,2:3]<- scale(test_glm[,2:3])
 ```
 
-Desarrollamos el modelo con la variable de respuesta "precio_bin", y las variables independientes "exterior", "garage", "elevator", "rooms", "precio_distrito" y "tipo_casa" usando una distribución binomial. 
+Tras seleccionar las variables y normalizarlas para que todas tengan el mismo peso, desarrollamos el modelo con la variable de respuesta "precio_bin" y las variables independientes "exterior", "garage", "elevator", "rooms", "precio_distrito" y "tipo_casa", usando una distribución binomial. 
 
 ```{r}
-glm_mhp = glm(formula = precio_bin ~ exterior + garage + elevator + rooms + precio_distrito + tipo_casa,
+glm_mhp = glm(formula = precio_bin ~ exterior + garage + elevator + rooms + m2 + precio_distrito + tipo_casa,
                  data = train_glm, 
                  family = binomial)
 summary(glm_mhp)
 ```
 En este caso, todos los coeficientes tienen valores "p" muy pequeños, lo que indica que todas las variables independientes tienen una relación significativa con la variable dependiente "precio_bin" en el modelo de regresión logística ajustado.
 
-En particular, las variables "garage", "elevator", "rooms", "precio_distrito_medio", "precio_distrito_caro" y "plantas bajas" tienen una relación significativa y positiva con la probabilidad de que la vivienda sea "cara", mientras que la variable "rooms" tiene una relación negativa con la probabilidad de que la vivienda sea "cara". Esto no tiene mucho sentido puesto que a más habitaciones más probable que una casa sea cara.
-El modelo explica una cantidad significativa de la varianza en la variable respuesta, con un AIC de 4904.4.
+Siendo el "Intercept" negativo, se puede apreciar como el precio depende de forma proporcional con el número de habitaciones, el tipo de piso y los metros cuadrados (sobre todo). Todo esperable, así como la dependencia inversa con aquellas viviendas que no tienen ascensor o graje.
+
+El modelo explica una cantidad significativa de la varianza en la variable respuesta, con un AIC de 4818.
 
 ```{r}
 head(predict(glm_mhp))
 ```
-Esto sirve para predecir la probabilidad logit ajustado previamente y para mostrar las primeras seis predicciones.
-Cada número representa la probabilidad logit de que la variable dependiente "precio_bin" sea igual a 1 para cada observación en el conjunto de datos.
+Esto sirve para predecir la probabilidad logit ajustado previamente y para mostrar las primeras seis predicciones. Cada número representa la probabilidad logit de que la variable dependiente "precio_bin" sea igual a 1 para cada observación en el conjunto de datos.
 
 ```{r}
 head(fitted(glm_mhp))
@@ -896,7 +891,7 @@ head(fitted(glm_mhp))
 Aquí obtenemos las probabilidades ajustadas que representan las probabilidades estimadas de que la variable dependiente "precio_bin" sea igual a 1 para cada observación en el conjunto de datos.
 
 ```{r}
-predicciones_glm <- ifelse(test = glm_mhp$fitted.values > 0.5, yes = 1, no = 0)
+predicciones_glm <- ifelse(test = glm_mhp$fitted.values > 0.5, no = 0, yes = 1)
 matriz_confusion_glm <- table(glm_mhp$model$precio_bin, predicciones_glm,
                           dnn = c("observaciones", "predicciones"))
 matriz_confusion_glm
@@ -906,23 +901,21 @@ Finalmente generamos predicciones binarias basadas en las probabilidades ajustad
 
 La matriz se lee de la siguiente manera:
 
--   Verdaderos negativos (VN): La esquina superior izquierda (3265) representa el número de observaciones clasificadas correctamente como "0" (clase negativa). Esto significa     que el modelo predijo correctamente 3265 casos como "0".
+-   Verdaderos negativos (VN): La esquina superior izquierda representa el número de observaciones clasificadas correctamente como "0" (clase negativa). Esto significa que el modelo predijo correctamente 3449 casos como "0", es decir, barata.
 
--   Falsos positivos (FP): La esquina superior derecha (598) representa el número de observaciones que en realidad eran "0" pero fueron clasificadas incorrectamente como "1"     (clase positiva) por el modelo. El modelo cometió un error en 598 casos al clasificarlos como "1".
+-   Falsos positivos (FP): La esquina superior derecha representa el número de observaciones que en realidad eran "0" pero fueron clasificadas incorrectamente como "1" (clase positiva) por el modelo. El modelo cometió un error en 414 casos al clasificarlos como caras.
 
--   Falsos negativos (FN): La esquina inferior izquierda (501) representa el número de observaciones que en realidad eran "1" pero fueron clasificadas incorrectamente como       "0" por el modelo. El modelo cometió un error en 501 casos al clasificarlos como "0".
+-   Falsos negativos (FN): La esquina inferior izquierda representa el número de observaciones que en realidad eran "1" pero fueron clasificadas incorrectamente como "0" por el modelo. El modelo cometió un error en 329 casos al clasificarlos como baratas.
 
--   Verdaderos positivos (VP): La esquina inferior derecha (3368) representa el número de observaciones clasificadas correctamente como "1". Esto significa que el modelo         predijo correctamente 3368 casos como "1".
-
+-   Verdaderos positivos (VP): La esquina inferior derecha representa el número de observaciones clasificadas correctamente como "1". Esto significa que el modelo predijo correctamente 3540 viviendas caras.
 
 ## KNN
 
-El modelo KNN (K-Nearest Neighbors) es un algoritmo de aprendizaje supervisado que se utiliza tanto para clasificación como para regresión. Es un método basado en instancias que no hace supuestos sobre la forma funcional de la relación entre las variables independientes y la variable dependiente. KNN utiliza la información de los vecinos más cercanos para realizar predicciones.
-Para ello calcula distancias como la Euclidiana, Manhattan, Minkowski, etc...
+El modelo KNN (K-Nearest Neighbors) es un algoritmo de aprendizaje supervisado que se utiliza tanto para clasificación como para regresión. Es un método basado en instancias que no hace supuestos sobre la forma funcional de la relación entre las variables independientes y la variable dependiente. KNN utiliza la información de los vecinos más cercanos para realizar predicciones. Para ello calcula distancias como la Euclidiana, Manhattan, Minkowski, etc...
 
 La idea detrás de KNN es simple, una observación se clasifica o se le asigna un valor basado en las características de sus K vecinos más cercanos.
 
-Algunas ventajas del algoritmo KNN son su simplicidad, su capacidad para manejar relaciones no lineales entre variables; sin embargo también tiene algunas desventajas, como su sensibilidad a la maldición de la dimensionalidad, el efecto de las variables irrelevantes y el costo computacional asociado con el cálculo de distancias en conjuntos de datos grandes.
+Algunas ventajas del algoritmo KNN son su simplicidad o su capacidad para manejar relaciones no lineales entre variables. Sin embargo también tiene algunas desventajas, como su sensibilidad a la maldición de la dimensionalidad, el efecto de las variables irrelevantes y el costo computacional asociado con el cálculo de distancias en conjuntos de datos grandes.
 
 Procedemos al cálculo de este modelo e intentamos ver si hay un número correcto de k-vecinos que podemos usar.
 
@@ -959,8 +952,7 @@ ggplot(data=resultados_knn,aes(x=index,y=f1score)) +
 
 ```
 
-Tratamos de encontrar el valor óptimo de k utilizando validación cruzada. Se calculan varias métricas de evaluación, como precisión, recall y F1-score, para cada valor de k y finalmente tratamos de graficar la precisión en función del valor de k, pero analizando el gráfico no observamos ninguna diferencia, así que cogemos 5 que es el tamaño por defecto que se suele coger.
-
+Tratamos de encontrar el valor óptimo de k utilizando validación cruzada. Se calculan varias métricas de evaluación, como precisión, recall y F1-score, para cada valor de k y finalmente tratamos de graficar la precisión en función del valor de k, pero analizando el gráfico no observamos ninguna diferencia, así que cogemos 5, que es el tamaño por convención que se suele coger.
 
 Pasamos a realizar predicciones en el conjunto de datos de entrenamiento y en el de test además de realizar la matriz de confusión.
 
@@ -978,7 +970,7 @@ confusionMatrix(table(prediccion_knn5_test,mhp_test$precio_bin), positive= "1")
 
 La matriz de confusión en train nos muestra la cantidad de predicciones correctas e incorrectas de cada clase (1 y 0) en el conjunto de entrenamiento.
 
--   Accuracy (exactitud): 0.8482. Es la proporción de predicciones correctas en el conjunto de entrenamiento. En otras palabras, el modelo KNN clasifica correctamente el         84.82% de las observaciones del conjunto de entrenamiento.
+-   Accuracy (exactitud): 0.8482. Es la proporción de predicciones correctas en el conjunto de entrenamiento. En otras palabras, el modelo KNN clasifica correctamente el 84.82% de las observaciones del conjunto de entrenamiento.
 
 -   Kappa: 0.6963. El índice kappa mide la concordancia entre las predicciones y los valores reales. Un kappa de 1 indica una concordancia perfecta, mientras que un kappa de     0 indica una concordancia totalmente aleatoria. Nuestro kappa de 0.6963 muestra una buena concordancia entre las predicciones y los valores reales en el conjunto de          entrenamiento.
 
@@ -986,11 +978,9 @@ La matriz de confusión en train nos muestra la cantidad de predicciones correct
 
 La matriz de confusión en test nos muestra valores muy parecidos en los indicadores anteriores lo que nos lleva a pensar que el modelo tiene un rendimiento consistente y generaliza bien lo datos ya que el modelo clasifica correctamente las observaciones y no parece sobreajustado.
 
-Hemos realizado diferentes pruebas quitando variables y se observa que si quitamos la variable m2 nos dice que hay muchos empates.
-Sin embargo, quitando las otras variables el acierto en train y test varía.
+Hemos realizado diferentes pruebas quitando variables y se observa que si quitamos la variable m2 nos dice que hay muchos empates. Sin embargo, quitando las otras variables el acierto en train y test varía.
 
-Obteniendo más o menos un 84% de acierto creemos que nos puede servir para clasificar las nuevas casas que entrasen en el dataset puesto que no hemos sido capaces de mejorar ese %.
-
+Obteniendo más o menos un 84% de acierto creemos que nos puede servir para clasificar las nuevas casas que entrasen en el dataset, puesto que no hemos sido capaces de mejorar ese %.
 
 ## Decision Trees
 
@@ -1004,9 +994,10 @@ A continuación hacemos el modelo de arbol de decisión.
 arbol <- rpart(precio_bin ~ garage + elevator + rooms + tipo_casa + precio_distrito, data = mhp_train, control = rpart.control(minsplit = 1))
 fancyRpartPlot(arbol, sub = "")
 ```
+
 Para evaluar el modelo utilizamos la función predict sobre el conjunto test usando el argumento type = "class" que indica que se espera una salida categórica creandose una tabla de contingencias "tab1" con las predicciones que coinciden o no respecto a las observaciones reales.
 
-Calculamos y obtenemos el número 0.8396275 que representa la tasa de acierto (accuracy) del modelo. El Árbol de Decisión hizo predicciones correctas en aproximadamente el 83.96% de los casos en el conjunto de datos de prueba. Nos parece un porcentaje bastante aceptable.
+Calculamos y obtenemos el número 0.8396275 que representa la tasa de acierto (accuracy) del modelo. El Árbol de Decisión hizo predicciones correctas en casi el 84% de los casos en el conjunto de datos de prueba. Nos parece un porcentaje bastante aceptable.
 
 ```{r}
 tab1 = table(pred = predict(arbol, mhp_test, type = "class"),
@@ -1085,10 +1076,10 @@ confusionMatrix(prediccion_1, mhp_train[["precio_bin"]])
 
 Los resultados en la matriz de confusión son los siguientes:
 
--   Verdaderos positivos (VP): 3246 (casos en los que se predijo 1 y el valor real era 1)
--   Verdaderos negativos (VN): 3250 (casos en los que se predijo 0 y el valor real era 0)
--   Falsos positivos (FP): 619 (casos en los que se predijo 1 pero el valor real era 0)
--   Falsos negativos (FN): 617 (casos en los que se predijo 0 pero el valor real era 1)
+-   Verdaderos positivos (VP): 3246
+-   Verdaderos negativos (VN): 3250
+-   Falsos positivos (FP): 619
+-   Falsos negativos (FN): 617
 
 También obtenemos:
 
@@ -1102,6 +1093,22 @@ También obtenemos:
 
 En resumen, este modelo de árbol de decisión podado tiene una exactitud del 84.01% y un coeficiente kappa de 0.6803, lo que indica un buen rendimiento en la clasificación.
 
+Sin embargo para este modelo se han tenido en cuenta bastantes variables, y aunque el rendimiento es bueno, se puede alcanzar un rendimiento casi igual utilizando sólo los metros cuadrados, como se puede ver a continuación
+
+```{r}
+arbol <- rpart(precio_bin ~ m2, data = mhp_train, control = rpart.control(minsplit = 1))
+fancyRpartPlot(arbol, sub = "")
+```
+
+```{r}
+tab1 = table(pred = predict(arbol, mhp_test, type = "class"),
+obs = mhp_test$precio_bin)
+ntest = nrow(mhp_test)
+acierto1 = sum(diag(tab1))/ntest
+acierto1
+```
+
+Esta es una forma simple de confirmar la relevancia que tiene la superficie de una casa sobre su precio final, en contraste con otras variables como el tener ascensor o garaje. Además, esto nos deja un modelo mucho más simple y explicable.
 
 ## Random Forest
 
@@ -1165,7 +1172,6 @@ confusionMatrix(y_pred, mhp_test_scaled[["precio_bin"]])
 La precisión del modelo es del 0,9077 y el intervalo de confianza del 95% es (0,8908, 0,9099), lo que indica que podemos estar bastante seguros de que la precisión real del modelo está dentro de este rango. El valor de kappa de 0,8013 indica que hay una buena concordancia entre las predicciones del modelo y las observaciones reales.
 
 Además, la sensibilidad del modelo es del 0,8670 y la especificidad del 0,9343. La tasa de detección es del 0,4335 y la prevalencia es del 0,5000. En general, el modelo tiene un desempeño bastante bueno en la clasificación de las viviendas por encima y por debajo del umbral.
-
 
 ## SVM
 
