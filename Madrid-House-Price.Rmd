@@ -1347,20 +1347,168 @@ La precisión del modelo no mejora del 90.77% anterior y el coste computacional 
 
 # Evaluación y comparación de modelos
 
-Tras la realización de todos los modelos, juntamos los mejores resultados en una sóla tabla para mejor comparabilidad:
+Evaluamos y comparamos los modelos que mayor porcentaje de predicción nos han proporcionado, Random Forest y SVM radial cost 10 (modelo inicial que nos daba un alto porcentaje de predicción y bajo coste computacional).
 
-```{r}
-
-```
-
+## RANDOM FOREST
 
 ### K-fold Cross Validation
 
+K-fold Cross Validation es un método de validación cruzada donde la idea principal es dividir el conjunto de datos en K subconjuntos más pequeños, llamados "folds", y utilizarlos para entrenar y probar el modelo de manera iterativa. Esto ayuda a evitar el sobreajuste y proporciona una estimación más precisa del rendimiento del modelo en datos no vistos.
+
+El proceso de K-fold Cross Validation es el siguiente:
+
+-   Dividir el conjunto de datos en K subconjuntos (folds) de aproximadamente el mismo tamaño.
+--    Para cada fold:
+---   a. Utilizar K-1 folds para entrenar el modelo.
+---   b. Utilizar el fold restante como conjunto de prueba para evaluar el rendimiento del modelo.
+-   Repetir el proceso K veces, asegurándose de que cada fold se utilice como conjunto de prueba exactamente una vez.
+-   Calcular métricas de rendimiento, como precisión, error cuadrático medio, etc., para cada una de las K iteraciones y promediar los resultados para obtener una estimación más sólida del rendimiento del modelo.
+
+La ventaja principal de utilizar K-fold Cross Validation es que todos los datos se utilizan tanto para entrenamiento como para pruebas, lo que proporciona una mejor estimación del rendimiento del modelo. Además, al repetir el proceso K veces, se reduce la varianza en las métricas de rendimiento, lo que resulta en una evaluación más confiable del modelo.
+
+```{r}
+# Renombramos los niveles de la variable de respuesta en los conjuntos de datos de entrenamiento y prueba
+mhp_train_scaled$precio_bin <- as.factor(mhp_train_scaled$precio_bin)
+levels(mhp_train_scaled$precio_bin) <- c("Level0", "Level1")
+
+mhp_test_scaled$precio_bin <- as.factor(mhp_test_scaled$precio_bin)
+levels(mhp_test_scaled$precio_bin) <- c("Level0", "Level1")
+
+# Configuramos la validación cruzada K-fold (por ejemplo, K=10)
+k_folds <- 10
+folds <- createFolds(mhp_train_scaled$precio_bin, k = k_folds)
+
+# Ajustamos un modelo Random Forest usando validación cruzada K-fold con la librería caret
+control <- trainControl(method = "cv", number = k_folds, index = folds)
+K_F_modelo_rf <- train(x = mhp_train_scaled[, c(3, 4, 5, 6, 7, 10, 11)],
+                   y = mhp_train_scaled$precio_bin,
+                   method = "rf",
+                   ntree = 10,
+                   trControl = control)
+
+# Imprimimos el resultado del modelo
+print(K_F_modelo_rf)
+```
+
+Estos resultados muestran el rendimiento del modelo de Random Forest para diferentes valores del hiperparámetro **mtry** que es el número de predictores que se utilizan en cada árbol de decisión. Se han probado 3 valores diferentes: 2, 4 y 7. y para cada valor de mtry se muestran precisiones cercanas al 90% como en el modelo inicial. K-fold validation nos indica que la mayor preción accuracy se obtiene con tan solo dos predictores, no hay necesidad de más.
+
 ### N-fold Cross Validation
+
+Es otra técnica de validación donde el conjunto de datos se divide en N subconjuntos y se entrena N veces utilizando cada vez un pliegue diferente como conjunto de validación, y los restantes N-1 pliegues como conjunto de entrenamiento.
+
+Al final del proceso, se obtienen N métricas de rendimiento, una por cada iteración. Estas métricas se promedian para obtener una estimación única del rendimiento del modelo. Esta estimación es más fiable que la que se obtiene utilizando únicamente un único conjunto de entrenamiento y validación, ya que reduce el riesgo de que el rendimiento del modelo se vea afectado por una división aleatoria específica del conjunto de datos.
+
+La validación cruzada de N pliegues ayuda a identificar si un modelo está sobreajustado (overfitting) o infraajustado (underfitting).
+
+```{r}
+# Configura el método de control de entrenamiento
+control <- trainControl(method = "cv",
+                        number = 5, # N-fold Cross Validation
+                        savePredictions = "final",
+                        classProbs = TRUE)
+
+# Entrena el modelo de Random Forest con N-fold Cross Validation
+N_F_modelo_rf <- train(x = mhp_train_scaled[, c(3, 4, 5, 6, 7, 10,11)],
+                   y = mhp_train_scaled$precio_bin,
+                   method = "rf",
+                   trControl = control,
+                   tuneGrid = data.frame(mtry = c(2, 4, 7)))
+
+# Muestra los resultados del modelo
+print(N_F_modelo_rf)
+```
+
+Para hacer N-fold Validation se entrenó un modelo de Random Forest utilizando validación cruzada de 5 pliegues, y se encontró que el valor óptimo de mtry para este conjunto de datos y clasificación es 2. El modelo alcanzó una exactitud promedio del 90.4% y un índice Kappa promedio de 0.809.
+
+
+## SVM
+
+Repetimos las validaciones para SVM.
+
+### K-fold Cross Validation
+
+```{r}
+# fórmula
+formula_svm <- precio_bin ~ rooms_estandarizado + m2_estandarizado + garage + elevator + tipo_casa + precio_distrito
+
+# Configura los parámetros de entrenamiento
+control_svm <- trainControl(method = "cv", number = 10) # 10-fold Cross Validation
+
+# Entrena el modelo SVM con K-fold Cross Validation
+K_F_modelo_svm_cv <- train(formula_svm,
+                       data = mhp_train,
+                       method = "svmRadial",
+                       trControl = control_svm,
+                       preProcess = c("center", "scale"),
+                       tuneGrid = data.frame(sigma = 0.1, C = 10))
+
+# Muestra los resultados
+print(K_F_modelo_svm_cv)
+```
+
+Le realizó la validación cruzada con 6 predictores y 10 pliegues alcanzándose una precisión del 90.10% y un Kappa del 80.80% mostrando una alta concordancia entre las predicciones y los valores reales ajustados por el azar.
+
+### N-fold Cross Validation
+
+```{r}
+# Cambia los niveles de la variable de clase 'precio_bin' a nombres válidos
+mhp_train$precio_bin <- factor(mhp_train$precio_bin, labels = c("Level0", "Level1"))
+
+# Definimos los controles de entrenamiento para la validación cruzada N-fold
+control <- trainControl(method = "cv", number = 5, savePredictions = "final", classProbs = TRUE)
+
+# Creamos el modelo SVM con validación cruzada N-fold
+N_F_modelo_svm_cv <- train(precio_bin ~ rooms_estandarizado + m2_estandarizado + garage + elevator + tipo_casa + precio_distrito,
+                       data = mhp_train,
+                       method = "svmRadial",
+                       trControl = control,
+                       preProcess = c("center", "scale"),
+                       tuneGrid = data.frame(sigma = 0.1, C = 10))
+
+# Mostramos los resultados del modelo SVM con validación cruzada N-fold
+print(N_F_modelo_svm_cv)
+```
+Le realizó la validación cruzada con 6 predictores y 10 pliegues alcanzándose una precisión del 90.20% y un Kappa del 80.47%. 
 
 # Elección punto de corte
 
+Nos disponemos a calculas las curvas ROC para cada uno de los modelo y los visualizamos en un mismo plot para mejor comparabilidad.
 
+```{r}
+# GLM
+probs_glm <- predict(glm_mhp, test_glm, type = "response")
 
+# KNN
+#probs_knn <- predict(prediccion_knn5_train, mhp_test, type = "prob")[, 2]
 
+# Decisión Tree
+probs_dt <- predict(arbol, mhp_test, type = "prob")[, 2]
+
+# Random Forest
+probs_rf <- predict(classifier, mhp_test, type = "prob")[, 2]
+
+# SVM
+probs_svm <- predict(modelo_svm, mhp_test[, c("rooms_estandarizado", "m2_estandarizado", "garage", "elevator", "tipo_casa", "precio_distrito")], probability = TRUE)
+probs_svm <- attr(probs_svm, "probabilities")[, 2]
+```
+
+```{r}
+# Calcula las curvas ROC
+roc_glm <- roc(mhp_test$precio_bin, probs_glm)
+#roc_knn <- roc(mhp_test$precio_bin, probs_knn)
+roc_dt <- roc(mhp_test$precio_bin, probs_dt)
+roc_rf <- roc(mhp_test$precio_bin, probs_rf)
+#roc_svm <- roc(mhp_test$precio_bin, probs_svm)
+
+# Configura el gráfico
+plot(roc_glm, col = "blue", lwd = 2, legacy.axes = TRUE, main = "Curvas ROC")
+#lines(roc_knn, col = "red", lwd = 2)
+lines(roc_dt, col = "green", lwd = 2)
+lines(roc_rf, col = "purple", lwd = 2)
+#lines(roc_svm, col = "orange", lwd = 2)
+
+# Añade leyenda
+legend("bottomright", legend = c("GLM", "KNN", "Decisión Tree", "Random Forest", "SVM"),
+       col = c("blue", "red", "green", "purple", "orange"), lwd = 2)
+```
 
