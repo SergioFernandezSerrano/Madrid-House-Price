@@ -1196,6 +1196,7 @@ y_pred = predict(classifier, newdata = mhp_test_scaled[,c(3,4,5,6,7,10,11)])
 ```{r}
 confusionMatrix(y_pred, mhp_test_scaled[["precio_bin"]])
 ```
+
 La precisión del modelo es del 0,9077 y el intervalo de confianza del 95% es (0,8908, 0,9099), lo que indica que podemos estar bastante seguros de que la precisión real del modelo está dentro de este rango. El valor de kappa de 0,8013 indica que hay una buena concordancia entre las predicciones del modelo y las observaciones reales.
 
 Además, la sensibilidad del modelo es del 0,8670 y la especificidad del 0,9343. La tasa de detección es del 0,4335 y la prevalencia es del 0,5000. En general, el modelo tiene un desempeño bastante bueno en la clasificación de las viviendas por encima y por debajo del umbral.
@@ -1206,34 +1207,36 @@ Support Vector Machine, algoritmo de aprendizaje supervisado que se utiliza tant
 
 El algoritmo SVM funciona de la siguiente manera:
 
--   Encuentra el hiperplano óptimo: El algoritmo busca el hiperplano que tenga el margen máximo entre las dos clases. El margen es la distancia entre el hiperplano y los         puntos de datos más cercanos a él, llamados "vectores de soporte". Estos vectores de soporte son los puntos de datos que definen el límite de decisión y son fundamentales     para el proceso de SVM.
+-   Encuentra el hiperplano óptimo: El algoritmo busca el hiperplano que tenga el margen máximo entre las dos clases. El margen es la distancia entre el hiperplano y los puntos de datos más cercanos a él, llamados "vectores de soporte". Estos vectores de soporte son los puntos de datos que definen el límite de decisión y son fundamentales para el proceso de SVM.
 
--   Solución de un problema de optimización: La búsqueda del hiperplano óptimo implica la solución de un problema de optimización convexa. Este problema se resuelve mediante     técnicas de optimización como el método de Lagrange o el algoritmo de optimización secuencial mínima (SMO).
+-   Solución de un problema de optimización: La búsqueda del hiperplano óptimo implica la solución de un problema de optimización convexa. Este problema se resuelve mediante técnicas de optimización como el método de Lagrange o el algoritmo de optimización secuencial mínima (SMO).
 
--   Transformación a través del kernel: En casos en los que los datos no son linealmente separables en el espacio de características original, SVM puede utilizar una función     de kernel para transformar los datos en un espacio de características de mayor dimensión donde se puedan separar linealmente. Los kernels comunes incluyen el kernel          lineal, el kernel polinómico, el kernel de base radial (RBF) y el kernel sigmoide. La elección del kernel adecuado es crucial para el rendimiento del modelo SVM.
+-   Transformación a través del kernel: En casos en los que los datos no son linealmente separables en el espacio de características original, SVM puede utilizar una función de kernel para transformar los datos en un espacio de características de mayor dimensión donde se puedan separar linealmente. Los kernels comunes incluyen el kernel          lineal, el kernel polinómico, el kernel de base radial (RBF) y el kernel sigmoide. La elección del kernel adecuado es crucial para el rendimiento del modelo SVM.
 
--   Clasificación: Para hacer una predicción en un nuevo punto de datos, el algoritmo SVM evalúa la posición del punto con respecto al hiperplano óptimo. Si el punto está por     encima del hiperplano, se asigna a una clase, y si está por debajo, se asigna a la otra clase.
+-   Clasificación: Para hacer una predicción en un nuevo punto de datos, el algoritmo SVM evalúa la posición del punto con respecto al hiperplano óptimo. Si el punto está por encima del hiperplano, se asigna a una clase, y si está por debajo, se asigna a la otra clase.
 
-Para resolver de SVM necesito conocer el kernel y el parámetro de regularización que es una cuota superior sobre las variables duales, en definitiva, un coste. Pasamos a construir  un primer el modelo usando un kernel radial RBF.
+Para resolver SVM se necesita conocer el kernel y el parámetro de regularización, que es una cuota superior sobre las variables duales, en definitiva, un coste. Pasamos a construirun primer el modelo usando un kernel radial RBF.
 
 ```{r}
 # Estandarizamos las variables numéricas "m2" y "rooms"
-mhp_train$m2_estandarizado <- scale(mhp_train$m2)
-mhp_train$rooms_estandarizado <- scale(mhp_train$rooms)
+mhp_train_svm <- mhp_train
+mhp_train_svm$m2 <- scale(mhp_train$m2)
+mhp_train_svm$rooms <- scale(mhp_train$rooms)
 
-mhp_test$m2_estandarizado <- scale(mhp_test$m2)
-mhp_test$rooms_estandarizado <- scale(mhp_test$rooms)
+mhp_test_svm <- mhp_test
+mhp_test_svm$m2 <- scale(mhp_test$m2)
+mhp_test_svm$rooms <- scale(mhp_test$rooms)
 
 # Entrenamos el modelo SVM  kernel con kernel radial
 
-modelo_svm <- svm(precio_bin ~ rooms_estandarizado + m2_estandarizado + garage + elevator + tipo_casa + precio_distrito, data = mhp_train, kernel = "radial", cost = 10, scale = TRUE)
+modelo_svm <- svm(precio_bin ~ rooms + m2 + garage + elevator + tipo_casa + precio_distrito, data = mhp_train_svm, kernel = "radial", cost = 10, scale = TRUE)
 
 # Hacemos predicciones en el conjunto de prueba
-svm_predicciones <- predict(modelo_svm, mhp_test[, c("rooms_estandarizado", "m2_estandarizado", "garage", "elevator", "tipo_casa", "precio_distrito")])
+svm_predicciones <- predict(modelo_svm, mhp_test_svm[, c("rooms", "m2", "garage", "elevator", "tipo_casa", "precio_distrito")])
 
 
 # Calculamos la matriz de confusión y la precisión del modelo
-svm_matriz_confusion <- table(Prediccion = svm_predicciones, Real = mhp_test$precio_bin)
+svm_matriz_confusion <- table(Prediccion = svm_predicciones, Real = mhp_test_svm$precio_bin)
 print(svm_matriz_confusion)
 precision <- sum(diag(svm_matriz_confusion)) / sum(svm_matriz_confusion)
 print(paste0("Precisión del modelo SVM: ", round(precision * 100, 2), "%"))
@@ -1248,19 +1251,17 @@ Esto significa que:
 
 La precisión del modelo es del 90.77%.
 
-\
-
-ELECCION DEL KERNEL
+*Elección del Kernel*
 
 La elección del kernel en un modelo SVM depende de la naturaleza y la distribución de los datos. No hay una regla única para seleccionar el kernel, pero aquí hay algunas pautas generales para ayudarte a tomar una decisión:
 
--   Kernel lineal: Si tus datos son linealmente separables o la cantidad de atributos es alta en comparación con la cantidad de muestras, entonces un kernel lineal suele         funcionar bien. Además, es computacionalmente más eficiente que otros kernels.
+-   Kernel lineal: Si tus datos son linealmente separables o la cantidad de atributos es alta en comparación con la cantidad de muestras, entonces un kernel lineal suele funcionar bien. Además, es computacionalmente más eficiente que otros kernels.
 
--   Kernel polinomial: Si tus datos tienen una estructura que puede ser capturada por un polinomio de un grado específico, el kernel polinomial podría ser una buena opción.      Sin embargo, a medida que aumenta el grado del polinomio, el riesgo de sobreajuste aumenta y la complejidad computacional puede crecer.
+-   Kernel polinomial: Si tus datos tienen una estructura que puede ser capturada por un polinomio de un grado específico, el kernel polinomial podría ser una buena opción. Sin embargo, a medida que aumenta el grado del polinomio, el riesgo de sobreajuste aumenta y la complejidad computacional puede crecer.
 
--   Kernel radial (RBF): El kernel radial es una opción popular y versátil en muchos casos, especialmente cuando no se sabe de antemano si los datos son linealmente              separables. Puede manejar datos no lineales y complejos. Sin embargo, encontrar los parámetros adecuados (costo y gamma) puede requerir una búsqueda en el espacio de         parámetros y, en consecuencia, un mayor tiempo de cómputo.
+-   Kernel radial (RBF): El kernel radial es una opción popular y versátil en muchos casos, especialmente cuando no se sabe de antemano si los datos son linealmente separables. Puede manejar datos no lineales y complejos. Sin embargo, encontrar los parámetros adecuados (costo y gamma) puede requerir una búsqueda en el espacio de parámetros y, en consecuencia, un mayor tiempo de cómputo.
 
--   Kernel sigmoide: El kernel sigmoide es similar a una función de activación de una red neuronal y puede ser una opción si deseas un enfoque similar al de una red neuronal     pero con un modelo SVM.
+-   Kernel sigmoide: El kernel sigmoide es similar a una función de activación de una red neuronal y puede ser una opción si deseas un enfoque similar al de una red neuronal pero con un modelo SVM.
 
 
 Vamos a probar a representar los datos para ver si de alguna manera puede tomarse una mejor decisión sobre el Kernel a usar.
@@ -1283,9 +1284,7 @@ mhp_train %>%
         plot.title.position = "plot")
 ```
 
-\
-
-Probamos varios KERNELS
+Probamos varios Kernels.
 
 Creamos una función entrenar_evaluar_svm() que entrenará y evaluará un modelo SVM utilizando el tipo de kernel especificado en el argumento kernel_type. Luego con lapply() se aplicará esta función a cada tipo de kernel en el vector kernels. La función presentará un matriz de confusión y la precisión para cada tipo de kernel.
 
@@ -1293,13 +1292,13 @@ Creamos una función entrenar_evaluar_svm() que entrenará y evaluará un modelo
 # Definir una función para entrenar y evaluar un modelo SVM con un tipo de kernel específico
 entrenar_evaluar_svm <- function(kernel_type) {
   # Entrenamos el modelo SVM con el kernel especificado
-  modelo_svm <- svm(precio_bin ~ rooms_estandarizado + m2_estandarizado + garage + elevator + tipo_casa + precio_distrito, data = mhp_train, kernel = kernel_type, cost = 10, scale = TRUE)
+  modelo_svm <- svm(precio_bin ~ rooms + m2 + garage + elevator + tipo_casa + precio_distrito, data = mhp_train_svm, kernel = kernel_type, cost = 10, scale = TRUE)
 
   # Hacemos predicciones en el conjunto de prueba
-  svm_predicciones <- predict(modelo_svm, mhp_test[, c("rooms_estandarizado", "m2_estandarizado", "garage", "elevator", "tipo_casa", "precio_distrito")])
+  svm_predicciones <- predict(modelo_svm, mhp_test_svm[, c("rooms", "m2", "garage", "elevator", "tipo_casa", "precio_distrito")])
 
   # Calculamos la matriz de confusión y la precisión del modelo
-  svm_matriz_confusion <- table(Prediccion = svm_predicciones, Real = mhp_test$precio_bin)
+  svm_matriz_confusion <- table(Prediccion = svm_predicciones, Real = mhp_test_svm$precio_bin)
   precision <- sum(diag(svm_matriz_confusion)) / sum(svm_matriz_confusion)
   
   # Devolvemos una lista con la precisión y la matriz de confusión
@@ -1321,12 +1320,12 @@ Se observa que el KERNEL RADIAL es el que mejor predice, ahora vamos a ajustar a
 
 ```{r}
 # Entrenar un modelo SVM con diferentes parámetros
-modelo_svm_radial <- svm(precio_bin ~ rooms_estandarizado + m2_estandarizado + garage + elevator + tipo_casa + precio_distrito, data = mhp_train, kernel = "radial", cost = 10, scale = TRUE)
+modelo_svm_radial <- svm(precio_bin ~ rooms + m2 + garage + elevator + tipo_casa + precio_distrito, data = mhp_train_svm, kernel = "radial", cost = 10, scale = TRUE)
 
 # Utilizar la función tune() para encontrar los mejores parámetros
 tuned_parameters <- tune(svm, 
-                         precio_bin ~ rooms_estandarizado + m2_estandarizado + garage + elevator + tipo_casa + precio_distrito,
-                         data = mhp_train,
+                         precio_bin ~ rooms + m2 + garage + elevator + tipo_casa + precio_distrito,
+                         data = mhp_train_svm,
                          kernel = "radial",
                          ranges = list(cost = c(0.1, 1, 10, 100, 1000),
                                        gamma = c(0.1, 0.5, 1, 2, 5)))
@@ -1335,21 +1334,22 @@ tuned_parameters <- tune(svm,
 best_model <- tuned_parameters$best.model
 
 # Hacer predicciones en el conjunto de prueba con el mejor modelo
-best_predictions <- predict(best_model, mhp_test[, c("rooms_estandarizado", "m2_estandarizado", "garage", "elevator", "tipo_casa", "precio_distrito")])
+best_predictions <- predict(best_model, mhp_test_svm[, c("rooms", "m2", "garage", "elevator", "tipo_casa", "precio_distrito")])
 
 # Calcular la matriz de confusión y la precisión del mejor modelo
-best_matriz_confusion <- table(Prediccion = best_predictions, Real = mhp_test$precio_bin)
+best_matriz_confusion <- table(Prediccion = best_predictions, Real = mhp_test_svm$precio_bin)
 print(best_matriz_confusion)
 best_precision <- sum(diag(best_matriz_confusion)) / sum(best_matriz_confusion)
 print(paste0("Precisión del mejor modelo SVM: ", round(best_precision * 100, 2), "%"))
 ```
+
 La precisión del modelo no mejora del 90.77% anterior y el coste computacional en la busqueda del mejor modelo es enorme.  Parece que los parámetros del modelo elegidos durante el proceso de afinación no han sido los correctos. La afinación e hiperparámetros implica buscar la mejor combinación de hiperparámetros dentro del rango de búsqueda que se proporciona. Si el rango de búsqueda no contiene la combinación óptima de hiperparámetros, el proceso de afinación podría terminar eligiendo una combinación subóptima que resulte en un rendimiento inferior.
 
 # Evaluación y comparación de modelos
 
 Evaluamos y comparamos los modelos que mayor porcentaje de predicción nos han proporcionado, Random Forest y SVM radial cost 10 (modelo inicial que nos daba un alto porcentaje de predicción y bajo coste computacional).
 
-## RANDOM FOREST
+## Random Forest
 
 ### K-fold Cross Validation
 
@@ -1390,7 +1390,7 @@ K_F_modelo_rf <- train(x = mhp_train_scaled[, c(3, 4, 5, 6, 7, 10, 11)],
 print(K_F_modelo_rf)
 ```
 
-Estos resultados muestran el rendimiento del modelo de Random Forest para diferentes valores del hiperparámetro **mtry** que es el número de predictores que se utilizan en cada árbol de decisión. Se han probado 3 valores diferentes: 2, 4 y 7. y para cada valor de mtry se muestran precisiones cercanas al 90% como en el modelo inicial. K-fold validation nos indica que la mayor preción accuracy se obtiene con tan solo dos predictores, no hay necesidad de más.
+Estos resultados muestran el rendimiento del modelo de Random Forest para diferentes valores del hiperparámetro **mtry** que es el número de predictores que se utilizan en cada árbol de decisión. Se han probado 3 valores diferentes: 2, 4 y 7. y para cada valor de mtry se muestran precisiones cercanas al 90% como en el modelo inicial. K-fold validation nos indica que el mayor accuracy se obtiene con tan solo dos predictores, no hay necesidad de más.
 
 ### N-fold Cross Validation
 
@@ -1420,7 +1420,6 @@ print(N_F_modelo_rf)
 
 Para hacer N-fold Validation se entrenó un modelo de Random Forest utilizando validación cruzada de 5 pliegues, y se encontró que el valor óptimo de mtry para este conjunto de datos y clasificación es 2. El modelo alcanzó una exactitud promedio del 90.4% y un índice Kappa promedio de 0.809.
 
-
 ## SVM
 
 Repetimos las validaciones para SVM.
@@ -1429,14 +1428,14 @@ Repetimos las validaciones para SVM.
 
 ```{r}
 # fórmula
-formula_svm <- precio_bin ~ rooms_estandarizado + m2_estandarizado + garage + elevator + tipo_casa + precio_distrito
+formula_svm <- precio_bin ~ rooms + m2 + garage + elevator + tipo_casa + precio_distrito
 
 # Configura los parámetros de entrenamiento
 control_svm <- trainControl(method = "cv", number = 10) # 10-fold Cross Validation
 
 # Entrena el modelo SVM con K-fold Cross Validation
 K_F_modelo_svm_cv <- train(formula_svm,
-                       data = mhp_train,
+                       data = mhp_train_svm,
                        method = "svmRadial",
                        trControl = control_svm,
                        preProcess = c("center", "scale"),
@@ -1446,20 +1445,20 @@ K_F_modelo_svm_cv <- train(formula_svm,
 print(K_F_modelo_svm_cv)
 ```
 
-Le realizó la validación cruzada con 6 predictores y 10 pliegues alcanzándose una precisión del 90.10% y un Kappa del 80.80% mostrando una alta concordancia entre las predicciones y los valores reales ajustados por el azar.
+Le realizó la validación cruzada con 6 predictores y 10 pliegues alcanzándose una precisión del 90.43% y un Kappa del 80.86% mostrando una alta concordancia entre las predicciones y los valores reales ajustados por el azar.
 
 ### N-fold Cross Validation
 
 ```{r}
 # Cambia los niveles de la variable de clase 'precio_bin' a nombres válidos
-mhp_train$precio_bin <- factor(mhp_train$precio_bin, labels = c("Level0", "Level1"))
+mhp_train_svm$precio_bin <- factor(mhp_train_svm$precio_bin, labels = c("Level0", "Level1"))
 
 # Definimos los controles de entrenamiento para la validación cruzada N-fold
 control <- trainControl(method = "cv", number = 5, savePredictions = "final", classProbs = TRUE)
 
 # Creamos el modelo SVM con validación cruzada N-fold
-N_F_modelo_svm_cv <- train(precio_bin ~ rooms_estandarizado + m2_estandarizado + garage + elevator + tipo_casa + precio_distrito,
-                       data = mhp_train,
+N_F_modelo_svm_cv <- train(precio_bin ~ rooms + m2 + garage + elevator + tipo_casa + precio_distrito,
+                       data = mhp_train_svm,
                        method = "svmRadial",
                        trControl = control,
                        preProcess = c("center", "scale"),
@@ -1468,11 +1467,12 @@ N_F_modelo_svm_cv <- train(precio_bin ~ rooms_estandarizado + m2_estandarizado +
 # Mostramos los resultados del modelo SVM con validación cruzada N-fold
 print(N_F_modelo_svm_cv)
 ```
-Le realizó la validación cruzada con 6 predictores y 10 pliegues alcanzándose una precisión del 90.20% y un Kappa del 80.47%. 
 
-# Elección punto de corte
+Le realizó la validación cruzada con 6 predictores y 10 pliegues alcanzándose una precisión del 90.29% y un Kappa del 80.57%. 
 
-Nos disponemos a calculas las curvas ROC para cada uno de los modelo y los visualizamos en un mismo plot para mejor comparabilidad.
+# Elección del mejor punto de corte según la curva ROC
+
+Nos disponemos a calcular las curvas ROC para cada uno de los modelo y los visualizamos en un mismo plot para mejor comparabilidad.
 
 ```{r}
 # GLM
@@ -1488,7 +1488,7 @@ probs_dt <- predict(arbol, mhp_test, type = "prob")[, 2]
 probs_rf <- predict(classifier, mhp_test, type = "prob")[, 2]
 
 # SVM
-probs_svm <- predict(modelo_svm, mhp_test[, c("rooms_estandarizado", "m2_estandarizado", "garage", "elevator", "tipo_casa", "precio_distrito")], probability = TRUE)
+probs_svm <- predict(modelo_svm, mhp_test_svm[, c("rooms", "m2", "garage", "elevator", "tipo_casa", "precio_distrito")], probability = TRUE)
 probs_svm <- attr(probs_svm, "probabilities")[, 2]
 ```
 
