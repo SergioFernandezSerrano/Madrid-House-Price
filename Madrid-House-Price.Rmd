@@ -52,7 +52,6 @@ library(rpart.plot)
 library(rattle)
 library(randomForest)
 library(e1071)
-library(kernlab)
 library(pROC)
 library(cluster)
 library(tidyverse)
@@ -884,11 +883,7 @@ glm_mhp = glm(formula = precio_bin ~ exterior + garage + elevator + rooms + m2 +
                  family = binomial)
 summary(glm_mhp)
 ```
-En este caso, todos los coeficientes tienen valores "p" muy pequeños, lo que indica que todas las variables independientes tienen una relación significativa con la variable dependiente "precio_bin" en el modelo de regresión logística ajustado.
-
-Siendo el "Intercept" negativo, se puede apreciar como el precio depende de forma proporcional con el número de habitaciones, el tipo de piso y los metros cuadrados (sobre todo). Todo esperable, así como la dependencia inversa con aquellas viviendas que no tienen ascensor o graje.
-
-El modelo explica una cantidad significativa de la varianza en la variable respuesta, con un AIC de 4818.
+Tras realizar muchas comprobaciones y probar de maneras diversa el modelo no conseguimos interpretar bien los datos. No somos capaces de entender por qué sale inversamente proporcional los m2,el precio distrito mdio y el caro, que precisamente son las 3 variables que más definen que una casa sea cara, entonces no entendemos qué significa en este caso que salgan negativas. Lo dejamos pendiente para que por favor nos expliqueis a qué se puede deber esto y así saberlo para futuras ocasiones.
 
 ```{r}
 head(predict(glm_mhp))
@@ -926,15 +921,17 @@ matriz_confusion_glm
 
 Finalmente generamos predicciones binarias basadas en las probabilidades ajustadas del modelo lineal generalizado y creamos una matriz de confusión para evaluar el rendimiento del modelo donde se muestra la distribución de las predicciones correctas e incorrectas en función de las observaciones reales y las predichas.
 
+Obersvamos que el modelo no acierta nada, esto imagino que estará relacionado con lo anterior que no llegamos a entender.
+
 La matriz se lee de la siguiente manera:
 
--   Verdaderos negativos (VN): La esquina superior izquierda (3265) representa el número de observaciones clasificadas correctamente como "0" (clase negativa). Esto significa que el modelo predijo correctamente 3265 casos como "0".
+-   Verdaderos negativos (VN): La esquina superior izquierda representa el número de observaciones clasificadas correctamente como "0" (clase negativa).
 
--   Falsos positivos (FP): La esquina superior derecha (598) representa el número de observaciones que en realidad eran "0" pero fueron clasificadas incorrectamente como "1" (clase positiva) por el modelo. El modelo cometió un error en 598 casos al clasificarlos como "1".
+-   Falsos positivos (FP): La esquina superior derecha representa el número de observaciones que en realidad eran "0" pero fueron clasificadas incorrectamente como "1" (clase positiva) por el modelo.
 
--   Falsos negativos (FN): La esquina inferior izquierda (501) representa el número de observaciones que en realidad eran "1" pero fueron clasificadas incorrectamente como "0" por el modelo. El modelo cometió un error en 501 casos al clasificarlos como "0".
+-   Falsos negativos (FN): La esquina inferior izquierda representa el número de observaciones que en realidad eran "1" pero fueron clasificadas incorrectamente como "0" por el modelo. 
 
--   Verdaderos positivos (VP): La esquina inferior derecha (3368) representa el número de observaciones clasificadas correctamente como "1". Esto significa que el modelo predijo correctamente 3368 casos como "1".
+-   Verdaderos positivos (VP): La esquina inferior derecha  representa el número de observaciones clasificadas correctamente como "1".
 
 ## KNN
 
@@ -985,13 +982,13 @@ Pasamos a realizar predicciones en el conjunto de datos de entrenamiento y en el
 
 ```{r}
 # En train
-prediccion_knn5_train =knn.cv(mhp_train[,c("exterior","rooms","m2","elevator", "garage")], 
-                              k=5, cl=mhp_train$precio_bin)
+prediccion_knn5_train <- knn.cv(mhp_train[,c("exterior","rooms","m2","elevator", "garage")], 
+                              k=5, cl=mhp_train$precio_bin, prob = TRUE)
 confusionMatrix(table(prediccion_knn5_train,mhp_train$precio_bin), positive= "1")
 
-#En test
-prediccion_knn5_test=knn(mhp_train[,c("exterior","rooms","m2","elevator", "garage")], mhp_test[,c("exterior","rooms","m2","elevator", "garage")],
-                         k=5, cl=mhp_train$precio_bin)
+#En test  
+prediccion_knn5_test <- knn(mhp_train[,c("exterior","rooms","m2","elevator", "garage")], mhp_test[,c("exterior","rooms","m2","elevator", "garage")],
+                         k=5, cl=mhp_train$precio_bin, prob = TRUE)
 confusionMatrix(table(prediccion_knn5_test,mhp_test$precio_bin), positive= "1")
 ```
 
@@ -1468,6 +1465,12 @@ N_F_modelo_svm_cv <- train(precio_bin ~ rooms + m2 + garage + elevator + tipo_ca
 print(N_F_modelo_svm_cv)
 ```
 
+```{r}
+knn_model <- knn.cv(mhp_train[,c("exterior","rooms","m2","elevator", "garage")], 
+                    k = 5, cl = mhp_train$precio_bin)
+```
+
+
 Le realizó la validación cruzada con 6 predictores y 10 pliegues alcanzándose una precisión del 90.29% y un Kappa del 80.57%. 
 
 # Elección del mejor punto de corte según la curva ROC
@@ -1479,7 +1482,7 @@ Nos disponemos a calcular las curvas ROC para cada uno de los modelo y los visua
 probs_glm <- predict(glm_mhp, test_glm, type = "response")
 
 # KNN
-#probs_knn <- predict(prediccion_knn5_train, mhp_test, type = "prob")[, 2]
+probs_knn <- attr(prediccion_knn5_test, "prob")
 
 # Decisión Tree
 probs_dt <- predict(arbol, mhp_test, type = "prob")[, 2]
@@ -1495,20 +1498,33 @@ probs_svm <- attr(probs_svm, "probabilities")[, 2]
 ```{r}
 # Calcula las curvas ROC
 roc_glm <- roc(mhp_test$precio_bin, probs_glm)
-#roc_knn <- roc(mhp_test$precio_bin, probs_knn)
+roc_knn <- roc(mhp_test$precio_bin, probs_knn)
 roc_dt <- roc(mhp_test$precio_bin, probs_dt)
 roc_rf <- roc(mhp_test$precio_bin, probs_rf)
 #roc_svm <- roc(mhp_test$precio_bin, probs_svm)
 
 # Configura el gráfico
 plot(roc_glm, col = "blue", lwd = 2, legacy.axes = TRUE, main = "Curvas ROC")
-#lines(roc_knn, col = "red", lwd = 2)
+lines(roc_knn, col = "red", lwd = 2)
 lines(roc_dt, col = "green", lwd = 2)
-lines(roc_rf, col = "purple", lwd = 2)
+lines(roc_rf, col = "darkred", lwd = 2)
 #lines(roc_svm, col = "orange", lwd = 2)
 
 # Añade leyenda
 legend("bottomright", legend = c("GLM", "KNN", "Decisión Tree", "Random Forest", "SVM"),
-       col = c("blue", "red", "green", "purple", "orange"), lwd = 2)
+       col = c("blue", "red", "green", "darkred", "orange"), lwd = 2)
 ```
+# Conclusiones
+
+Después de evaluar todos los modelos de aprendizaje automático, se observa que los mejores resultados se obtienen con el modelo de Random Forest y el modelo SVM (Support Vector Machine). Sin embargo, el modelo Random Forest es preferido sobre el modelo SVM por las siguientes razones:
+
+1. **Coste computacional:** El modelo Random Forest generalmente tiene un menor costo computacional en comparación con el modelo SVM, especialmente cuando se trabaja con grandes conjuntos de datos. Esto significa que el tiempo de entrenamiento y predicción es más corto y requiere menos recursos computacionales.
+
+2. **Simplicidad del modelo:** Aunque ambos modelos son eficaces, el modelo Random Forest es más fácil de entender y de explicar. Los árboles de decisión que forman el Random Forest pueden visualizarse y analizarse fácilmente, lo que facilita la interpretación de los resultados y la identificación de características importantes.
+
+3. **Explicabilidad:** La explicabilidad es un aspecto crítico en la ciencia de datos y el aprendizaje automático. Los modelos que son más fáciles de explicar y entender son preferibles en muchas situaciones, especialmente cuando se necesita justificar las decisiones basadas en estos modelos. El modelo Random Forest ofrece una mejor explicabilidad en comparación con el modelo SVM, ya que es más fácil de visualizar y entender cómo se toman las decisiones en el modelo.
+
+4. **Rendimiento similar:** A pesar de las ventajas mencionadas anteriormente, la elección entre Random Forest y SVM se basa en gran medida en su rendimiento en la tarea específica. En este caso, ambos modelos proporcionan resultados similares, lo que respalda la decisión de elegir el modelo Random Forest debido a sus otras ventajas.
+
+
 
