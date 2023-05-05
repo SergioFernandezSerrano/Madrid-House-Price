@@ -1514,7 +1514,7 @@ lines(roc_rf, col = "darkred", lwd = 2)
 legend("bottomright", legend = c("GLM", "KNN", "Decisión Tree", "Random Forest", "SVM"),
        col = c("blue", "red", "green", "darkred", "orange"), lwd = 2)
 ```
-# Conclusiones
+## Conclusiones
 
 Después de evaluar todos los modelos de aprendizaje automático, se observa que los mejores resultados se obtienen con el modelo de Random Forest y el modelo SVM (Support Vector Machine). Sin embargo, el modelo Random Forest es preferido sobre el modelo SVM por las siguientes razones:
 
