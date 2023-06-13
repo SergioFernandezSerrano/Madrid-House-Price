@@ -1537,4 +1537,54 @@ Después de evaluar todos los modelos de aprendizaje automático, se observa que
 
 # Series Temporales
 
+Continuando con nuestro proyecto de Machine Learning pero apartándonos bastante del dataset original basado en la predicción del precio y etiquetado de casas en Madrid, procedemos a hacer un estudio de ventas en un famoso centro comercial estadounidense, <u>**Walmart**</u>. 
+
+Para ello hemos obtenido un dataset bastante completo con información de ventas de dicho establecimiento de un repositorio en la siguiente web ([kaggle - Walmart Sales Dataset of 45 Stores](https://www.kaggle.com/datasets/varsharam/walmart-sales-dataset-of-45stores?select=walmart-sales-dataset-of-45stores.csv)) con formato _long format_.
+
+Para el análisis de series temporales conviene saber que son un conjuntos de datos secuenciales que representan observaciones realizadas a lo largo del tiempo, generalmente en intervalos regulares. En este tipo de datos, el orden temporal es fundamental, ya que cada observación está asociada a un momento específico en el tiempo.
+
+El análisis de series temporales se enfoca en comprender y modelar el patrón temporal subyacente en los datos, con el objetivo de predecir o explicar su comportamiento futuro. Las series temporales pueden presentar diferentes características, como tendencias, estacionalidad, ciclos y componentes aleatorios.
+
+Al analizar una serie temporal, se busca identificar patrones y estructuras temporales, como cambios de tendencia, patrones estacionales o efectos de eventos específicos. Esto se logra mediante técnicas estadísticas y modelos matemáticos que permiten modelar y predecir el comportamiento futuro de la serie.
+
+Las series temporales pueden utilizarse en una amplia gama de aplicaciones, como pronósticos económicos, análisis de ventas, previsión del clima, análisis de datos financieros...
+
+En el contexto de nuestro proyecto con el dataset de ventas de Waltmark, nos disponemos a utilizar técnicas de análisis de series temporales para estudiar el comportamiento de las ventas a lo largo del tiempo, identificar patrones estacionales, detectar cambios en las tendencias, analizar el impacto de eventos especiales y realizar pronósticos de las ventas futuras.
+
+```{r}
+library(xts)
+library(forecast)
+library(tsibble)
+library(tidyquant)
+```
+
+## Lectura y preparación de los datos 
+
+```{r}
+walmart <- read_csv("walmart.csv")
+```
+
+```{r}
+head(walmart, 10) %>%
+  kbl() %>%
+  kable_material(c("striped", "hover")) %>%
+  scroll_box(width = "100%", height = "350px")
+```
+
+```{r}
+walmart$Date <- as.Date(walmart$Date, format = "%d-%m-%Y")
+```
+
+```{r}
+summary(walmart)
+```
+
+```{r}
+str(walmart) 
+```
+
+```{r}
+
+```
+
 
