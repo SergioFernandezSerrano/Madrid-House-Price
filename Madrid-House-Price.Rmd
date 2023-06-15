@@ -1537,6 +1537,8 @@ Después de evaluar todos los modelos de aprendizaje automático, se observa que
 
 # Series Temporales
 
+![](walmart.jpg)
+
 Continuando con nuestro proyecto de Machine Learning pero apartándonos bastante del dataset original basado en la predicción del precio y etiquetado de casas en Madrid, procedemos a hacer un estudio de ventas en un famoso centro comercial estadounidense, <u>**Walmart**</u>. 
 
 Para ello hemos obtenido un dataset bastante completo con información de ventas de dicho establecimiento de un repositorio en la siguiente web ([kaggle - Walmart Sales Dataset of 45 Stores](https://www.kaggle.com/datasets/varsharam/walmart-sales-dataset-of-45stores?select=walmart-sales-dataset-of-45stores.csv)) con formato _long format_.
