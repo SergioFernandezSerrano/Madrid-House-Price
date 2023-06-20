@@ -1558,13 +1558,19 @@ library(xts)
 library(forecast)
 library(tsibble)
 library(tidyquant)
+library(feasts)
+library(fable)
 ```
 
 ## Lectura y preparación de los datos 
 
+\
+
 ```{r}
 walmart <- read_csv("walmart.csv")
 ```
+
+\
 
 ```{r}
 head(walmart, 10) %>%
@@ -1574,7 +1580,9 @@ head(walmart, 10) %>%
 ```
 
 ```{r}
+walmart$Store <- factor(walmart$Store)
 walmart$Date <- as.Date(walmart$Date, format = "%d-%m-%Y")
+walmart$Holiday_Flag <- as.factor(walmart$Holiday_Flag)
 ```
 
 ```{r}
@@ -1585,8 +1593,116 @@ summary(walmart)
 str(walmart) 
 ```
 
+El dataset contiene **6.435 observaciones** correspondientes a ventas semanales en cada una de las 45 tiendas Walmart en EEUU entre 2010 y 2012 además de **8 variables** (de las cuales son **2 cualitativas** y **6 cuantitativas**).
+
+A continuación, la descripción de cada una de las variables:
+
+  - **Store**: Número de tienda que van del 1 al 45
+  
+  - **Date**: La semana de las Ventas. Tiene el formato dd-mm-yyyy. Comienza el 05-02-2010
+  
+  - **Weekly_Sales**: Ventas totales durante la semana
+  
+  - **Holiday_Flag**: Si la semana tiene un feriado especial o no. 1 si la semana tiene un feriado 0 si la semana es completamente laboral
+  
+  - **Temperature**: Temperatura media de la semana donde se producen las ventas
+  
+  - **Fuel_Price**: Precio del combustible en la región donde se encuentra situada la tienda
+  
+  - **CPI**: Índice de precios del cliente. Es un indicador utilizado para medir los cambios en el nivel de precios de bienes y servicios a lo largo del tiempo. El CPI es calculado por la Oficina de Estadísticas Laborales (Bureau of Labor Statistics) y es ampliamente utilizado como una medida de la inflación en la economía. Se basa en una "cesta de bienes" que representa los productos y servicios típicos que consume un hogar promedio. Es lo mismo que el IPC (Índice de Precio al Consumo).
+  
+  - **Unemployment**: Tasa de desempleo en la región donde se encuentra situada la tienda
+
+
+## Gráficos de series temporales
+
+Comenzamos con unos gráficos simples por variable para ver como se comportan los datos.
+
+\
+
+```{r}
+plot0 <- ggplot(walmart, aes(x = as.factor(Store), y = Weekly_Sales, fill = as.factor(Store))) +
+  geom_boxplot(fill = "#FFB21C") +
+  labs(x = "Store", y = "Weekly Sales") +
+  theme_minimal() +
+  theme(legend.position = "none") +
+  coord_flip() +
+  scale_y_continuous(labels = unit_format(unit = "M", scale = 1e-6))
+
+plot0
+```
+
+
+```{r}
+plot1 <- ggplot(walmart, aes(x = "", y = Temperature)) +
+  geom_boxplot(fill = "#FFB21C") +
+  labs(x = NULL, y = "Temperature") +
+  theme_minimal()
+
+plot2 <- ggplot(walmart, aes(x = "", y = Fuel_Price)) +
+  geom_boxplot(fill = "#FFB21C") +
+  labs(x = NULL, y = "Fuel Price") +
+  theme_minimal()
+
+plot3 <- ggplot(walmart, aes(x = "", y = CPI)) +
+  geom_boxplot(fill = "#FFB21C") +
+  labs(x = NULL, y = "CPI") +
+  theme_minimal()
+
+plot4 <- ggplot(walmart, aes(x = "", y = Unemployment)) +
+  geom_boxplot(fill = "#FFB21C") +
+  labs(x = NULL, y = "Unemployment") +
+  theme_minimal()
+
+
+grid <- grid.arrange(plot1, plot2, plot3, plot4, nrow = 2, ncol = 2)
+
+
+grid
+```
+
+Nos llama la atención la amplitud de las variables CPI y Unemployment y pasamos a graficarlas por tienda. 
+
 ```{r}
 
+plot5 <- ggplot(walmart, aes(x = as.factor(Store), y = CPI, fill = as.factor(Store))) +
+  geom_boxplot(fill = "#FFB21C") +
+  labs(x = "Store", y = "CPI") +
+  theme_minimal() +
+  theme(legend.position = "none") +
+  coord_flip()
+
+
+plot6 <- ggplot(walmart, aes(x = as.factor(Store), y = Unemployment, fill = as.factor(Store))) +
+  geom_boxplot(fill = "#FFB21C") +
+  labs(x = "Store", y = "Unemployment") +
+  theme_minimal() +
+  theme(legend.position = "none") +
+  coord_flip()
+
+
+plot5
+plot6
 ```
+
+Parece que dependiendo de la región donde se encuentre la tienda hay una gran dispersión de gasto en una cesta de la compra promedio y la tasa de desempleo también copntibuye a la misma. El único inconveniente es que a través de este dataset desconocemos las regiones de EEUU donde se sitúan las tiendas Walmart.
+
+```{r}
+variables <- c("Weekly_Sales", "Temperature", "Fuel_Price", "CPI", "Unemployment", "Holiday_Flag")
+
+subset_walmart <- walmart[, variables]
+
+ggpairs(subset_walmart)
+```
+
+```{r}
+ggplot(walmart, aes(x = Date, y = Weekly_Sales, color = as.factor(Store))) +
+  geom_line() +
+  labs(x = "Date", y = "Weekly Sales", color = "Store") +
+  theme_minimal()
+```
+
+
+
 
 
