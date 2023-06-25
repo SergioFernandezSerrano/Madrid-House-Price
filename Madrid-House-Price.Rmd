@@ -1537,7 +1537,11 @@ Después de evaluar todos los modelos de aprendizaje automático, se observa que
 
 # Series Temporales
 
+\
+
 ![](walmart.jpg)
+
+\
 
 Continuando con nuestro proyecto de Machine Learning pero apartándonos bastante del dataset original basado en la predicción del precio y etiquetado de casas en Madrid, procedemos a hacer un estudio de ventas en un famoso centro comercial estadounidense, <u>**Walmart**</u>. 
 
@@ -1560,6 +1564,8 @@ library(tsibble)
 library(tidyquant)
 library(feasts)
 library(fable)
+library(zoo)
+library(DT)
 ```
 
 ## Lectura y preparación de los datos 
@@ -1569,8 +1575,6 @@ library(fable)
 ```{r}
 walmart <- read_csv("walmart.csv")
 ```
-
-\
 
 ```{r}
 head(walmart, 10) %>%
@@ -1599,7 +1603,7 @@ A continuación, la descripción de cada una de las variables:
 
   - **Store**: Número de tienda que van del 1 al 45
   
-  - **Date**: La semana de las Ventas. Tiene el formato dd-mm-yyyy. Comienza el 05-02-2010
+  - **Date**: Día de la semana donde se recoge el dato de ventas. Tiene formato dd-mm-yyyy. Comienza 05-02-2010 hasta 26-10-2012; un total de 143 semanas (2 años y 9 meses)
   
   - **Weekly_Sales**: Ventas totales durante la semana
   
@@ -1614,95 +1618,329 @@ A continuación, la descripción de cada una de las variables:
   - **Unemployment**: Tasa de desempleo en la región donde se encuentra situada la tienda
 
 
-## Gráficos de series temporales
+## Análisis y gráficos univariante
 
-Comenzamos con unos gráficos simples por variable para ver como se comportan los datos.
-
-\
+Comenzamos con unas tablas y gráficos simples por variable para ver como se comportan los datos y analizar los estadísticos principales por tienda.
 
 ```{r}
-plot0 <- ggplot(walmart, aes(x = as.factor(Store), y = Weekly_Sales, fill = as.factor(Store))) +
-  geom_boxplot(fill = "#FFB21C") +
-  labs(x = "Store", y = "Weekly Sales") +
-  theme_minimal() +
-  theme(legend.position = "none") +
-  coord_flip() +
-  scale_y_continuous(labels = unit_format(unit = "M", scale = 1e-6))
+# Función para formatear números como moneda en formato americano
+formatCurrency <- function(x) {
+  format(x, big.mark = ".", decimal.mark = ",", nsmall = 2, trim = TRUE, scientific = FALSE)
+}
 
-plot0
+# Calcular estadísticas de Walmart para la variable Temperature
+walmart_stats_temperature <- walmart %>%
+  group_by(Store) %>%
+  summarise(min = formatCurrency(min(Temperature)),
+            max = formatCurrency(max(Temperature)),
+            median = formatCurrency(median(Temperature)),
+            mean = formatCurrency(mean(Temperature)),
+            sd = formatCurrency(sd(Temperature)))
+
+# Calcular estadísticas de Walmart para la variable Fuel_Price
+walmart_stats_fuel <- walmart %>%
+  group_by(Store) %>%
+  summarise(min = formatCurrency(min(Fuel_Price)),
+            max = formatCurrency(max(Fuel_Price)),
+            median = formatCurrency(median(Fuel_Price)),
+            mean = formatCurrency(mean(Fuel_Price)),
+            sd = formatCurrency(sd(Fuel_Price)))
+
+# Calcular estadísticas de Walmart para la variable CPI
+walmart_stats_cpi <- walmart %>%
+  group_by(Store) %>%
+  summarise(min = formatCurrency(min(CPI)),
+            max = formatCurrency(max(CPI)),
+            median = formatCurrency(median(CPI)),
+            mean = formatCurrency(mean(CPI)),
+            sd = formatCurrency(sd(CPI)))
+
+# Calcular estadísticas de Walmart para la variable Unemployment
+walmart_stats_unemployment <- walmart %>%
+  group_by(Store) %>%
+  summarise(min = formatCurrency(min(Unemployment)),
+            max = formatCurrency(max(Unemployment)),
+            median = formatCurrency(median(Unemployment)),
+            mean = formatCurrency(mean(Unemployment)),
+            sd = formatCurrency(sd(Unemployment)))
+
+# Mostrar la tabla con los resultados para la variable Temperature
+datatable(walmart_stats_temperature, options = list(scrollY = "300px", paging = FALSE), caption = "TEMPERATURE")
+
+# Mostrar la tabla con los resultados para la variable Fuel_Price
+datatable(walmart_stats_fuel, options = list(scrollY = "300px", paging = FALSE), caption = "FUEL PRICE")
+
+# Mostrar la tabla con los resultados para la variable CPI
+datatable(walmart_stats_cpi, options = list(scrollY = "300px", paging = FALSE), caption = "CPI")
+
+# Mostrar la tabla con los resultados para la variable Unemployment
+datatable(walmart_stats_unemployment, options = list(scrollY = "300px", paging = FALSE), caption = "UNEMPLOYMENT")
 ```
 
 
 ```{r}
 plot1 <- ggplot(walmart, aes(x = "", y = Temperature)) +
   geom_boxplot(fill = "#FFB21C") +
-  labs(x = NULL, y = "Temperature") +
+  labs(x = "ºF", y = "Temperature") +
   theme_minimal()
 
 plot2 <- ggplot(walmart, aes(x = "", y = Fuel_Price)) +
   geom_boxplot(fill = "#FFB21C") +
-  labs(x = NULL, y = "Fuel Price") +
+  labs(x = "$ Gallon", y = "Fuel Price") +
   theme_minimal()
 
 plot3 <- ggplot(walmart, aes(x = "", y = CPI)) +
   geom_boxplot(fill = "#FFB21C") +
-  labs(x = NULL, y = "CPI") +
+  labs(x = "Index", y = "CPI") +
   theme_minimal()
 
 plot4 <- ggplot(walmart, aes(x = "", y = Unemployment)) +
   geom_boxplot(fill = "#FFB21C") +
-  labs(x = NULL, y = "Unemployment") +
+  labs(x = "Rate", y = "Unemployment") +
   theme_minimal()
 
-
 grid <- grid.arrange(plot1, plot2, plot3, plot4, nrow = 2, ncol = 2)
-
-
-grid
 ```
 
-Nos llama la atención la amplitud de las variables CPI y Unemployment y pasamos a graficarlas por tienda. 
+Nos llama la atención la amplitud de las variables **CPI** y **Unemployment** y pasamos a graficarlas por tienda. 
 
 ```{r}
-
 plot5 <- ggplot(walmart, aes(x = as.factor(Store), y = CPI, fill = as.factor(Store))) +
   geom_boxplot(fill = "#FFB21C") +
-  labs(x = "Store", y = "CPI") +
+  labs(x = "Store", y = "CPI", title = "CPI per Store's Region") +
   theme_minimal() +
   theme(legend.position = "none") +
+  theme(plot.title = element_text(hjust = 0.5)) +
   coord_flip()
-
 
 plot6 <- ggplot(walmart, aes(x = as.factor(Store), y = Unemployment, fill = as.factor(Store))) +
   geom_boxplot(fill = "#FFB21C") +
-  labs(x = "Store", y = "Unemployment") +
+  labs(x = "Store", y = "Unemployment", title = "Unemployment Rate per Store's Region") +
   theme_minimal() +
   theme(legend.position = "none") +
+  theme(plot.title = element_text(hjust = 0.5)) +
   coord_flip()
-
 
 plot5
 plot6
 ```
 
-Parece que dependiendo de la región donde se encuentre la tienda hay una gran dispersión de gasto en una cesta de la compra promedio y la tasa de desempleo también copntibuye a la misma. El único inconveniente es que a través de este dataset desconocemos las regiones de EEUU donde se sitúan las tiendas Walmart.
+Parece que dependiendo de la región donde se encuentre la tienda hay una mayor dispersión del gasto promedio en una cesta de la compra; y la tasa de desempleo también contribuye de manera relevante acentuándo dicha dispersión.
+El inconveniente es que a través del dataset desconocemos las regiones de EEUU donde se sitúan las 45 tiendas Walmart por lo que no podemos interpretar si tiene o no demasiado sentido, vamos a suponer que sí ya que no es lo mismo una tienda situada en un estado con mayor población que otro, y no es lo mismo una tienda en los estados rurales que en las grandes urbes de ambas costas.
+
+
+Ahora nos disponemoa a analizar las ventas semanales usando la variable **Weekly_Sales**.
 
 ```{r}
-variables <- c("Weekly_Sales", "Temperature", "Fuel_Price", "CPI", "Unemployment", "Holiday_Flag")
+# Función para formatear números como moneda en formato americano
+formatCurrency <- function(x) {
+  format(x, big.mark = ".", decimal.mark = ",", nsmall = 2, trim = TRUE, scientific = FALSE)
+}
 
-subset_walmart <- walmart[, variables]
+# Calcular estadísticas de Walmart
+walmart_stats <- walmart %>%
+  group_by(Store) %>%
+  summarise(min = formatCurrency(min(Weekly_Sales)),
+            max = formatCurrency(max(Weekly_Sales)),
+            median = formatCurrency(median(Weekly_Sales)),
+            mean = formatCurrency(mean(Weekly_Sales)),
+            sd = formatCurrency(sd(Weekly_Sales)),
+            sum = formatCurrency(sum(Weekly_Sales)))
 
-ggpairs(subset_walmart)
+# Mostrar la tabla con los resultados
+datatable(walmart_stats, options = list(scrollY = "300px", paging = FALSE), caption = "SALES")
 ```
 
 ```{r}
-ggplot(walmart, aes(x = Date, y = Weekly_Sales, color = as.factor(Store))) +
-  geom_line() +
-  labs(x = "Date", y = "Weekly Sales", color = "Store") +
+# Suma de las ventas semanales por tienda
+ventas_por_tienda <- aggregate(Weekly_Sales ~ Store, data = walmart, FUN = sum)
+
+# Orden de las tiendas de menor a mayor ventas
+ventas_por_tienda <- ventas_por_tienda[order(ventas_por_tienda$Weekly_Sales, decreasing = FALSE), ]
+ventas_por_tienda$Store <- factor(ventas_por_tienda$Store, levels = ventas_por_tienda$Store)
+
+plot7 <- ggplot(ventas_por_tienda, aes(x = Weekly_Sales, y = Store)) +
+  geom_bar(stat = "identity", fill = "#FFB21C") +
+  labs(x = "Total Sales (Millions)", y = "Store", title = "Total Sales per Store Aggregated by Sum") +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  scale_y_discrete(labels = ventas_por_tienda$Store) +
+  scale_x_continuous(labels = scales::unit_format(unit = "M", scale = 1e-6)) +
   theme_minimal()
+
+plot7
+```
+
+
+```{r}
+plot8 <- ggplot(walmart, aes(x = as.factor(Store), y = Weekly_Sales, fill = as.factor(Store))) +
+  geom_boxplot(fill = "#FFB21C") +
+  labs(x = "Store", y = "Weekly Sales", title = "Weekly Sales per Store") +
+  theme_minimal() +
+  theme(legend.position = "none") +
+  coord_flip() +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  scale_y_continuous(labels = unit_format(unit = "M", scale = 1e-6))
+
+plot8
+```
+
+Este boxplot tampoco es muy exclarecedor, en muchas tiendas exite gran dispersión de los datos dentro del rango intercuartílico y hay datos muy atípicos. Esto puede sugerir que la distribución de datos está sesgada. Insistimos en que sin conocer las regiones donde se encuentran las tiendas es muy complicado llegar a más conclusiones o a un mejor entendimiento.
+
+
+## Análisis y gráficos multivariante
+
+Una vez analizadas todas las variables de forma individual, podemos buscar algunas relaciones entre ellas mediante el siguiente análisis multivariante donde se pueden observar que existen correlaciones muy débiles, sólo pudiendo destacarse la correlación negativa del -0.3 que existe entre el CPI y la tasa de Unemployment; correlación que tiene bastante lógica dado que a mayor tasa de desempleo el gasto promedio en una cesta de la compra se verá redicido.
+Otro correlación muy débil aunque reseñable es la de 0.18 que existe entre la temperatura y el CPI, quizas a mayor temperatura la población salga más a la calle a consumir... pero es dificilmente demostrable.
+
+```{r}
+variables <- c("Weekly_Sales", "Temperature", "Fuel_Price", "CPI", "Unemployment")
+data <- walmart[, variables]
+correlation_matrix <- cor(data)
+plot9 <- ggcorrplot(correlation_matrix, type = "lower", lab = TRUE, lab_size = 3)
+plot9
 ```
 
 
 
+## Análisis y gráficos de series temporales
 
+Antes de graficar las series temporales de nuestro dataset vamos a sacar por tienda las 3 mayores ventas y el restos de las variables asociadas a las mismas, principalmente para identificar si hay algún patrón como que todas se producen en las mismas fechas, que todas tienen unos índeces CPI concretos o que están sujetas a unas tasas de desempleo específicas...
+
+```{r}
+# Función para formatear números como moneda en formato americano
+formatCurrency <- function(x) {
+  format(x, big.mark = ".", decimal.mark = ",", nsmall = 2, trim = TRUE, scientific = FALSE)
+}
+
+# Calcular las 5 mayores cifras de ventas para cada tienda
+walmart_top5sales <- walmart %>%
+  group_by(Store) %>%
+  top_n(3, Weekly_Sales) %>%
+  summarise(Max_Weekly_Sales = formatCurrency(Weekly_Sales),
+            Date = Date,
+            Fuel_Price = Fuel_Price,
+            CPI = CPI,
+            Unemployment = Unemployment)
+
+# Mostrar la tabla con los resultados
+datatable(walmart_top5sales, options = list(scrollY = "300px", paging = FALSE), caption = "TOP 3 WEEKLY SALES PER STORE")
+```
+
+```{r}
+# Función para formatear números como moneda en formato americano
+formatCurrency <- function(x) {
+  format(x, big.mark = ",", decimal.mark = ".", nsmall = 2, trim = TRUE, scientific = FALSE)
+}
+
+# Obtener los 10 primeros días con más ventas y aplicar el formato de moneda
+top_10_days <- walmart %>%
+  group_by(Date) %>%
+  summarise(total_sales = sum(Weekly_Sales)) %>%
+  top_n(10, total_sales) %>%
+  arrange(desc(total_sales)) %>%
+  mutate(total_sales = formatCurrency(total_sales))
+
+datatable(top_10_days, options = list(scrollY = "300px", paging = FALSE), caption = "Top 10 Days with Highest Sales")
+```
+
+Se observa claramente como 6 de esos 10 días con más ventas son las semanas de Navidad, seguido por Acción de Gracias en noviembre.
+
+<u>**GRÁFICO SERIE TEMPORAL**</u>
+
+```{r}
+walmart <- arrange(walmart, Date)
+
+plot10 <- ggplot(walmart, aes(x = Date, y = Weekly_Sales)) +
+  geom_line() +
+  labs(x = "Date", y = "Weekly Sales", title = "Weekly Sales Time Series Plot") +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  scale_y_continuous(labels = unit_format(unit = "M", scale = 1e-6)) + 
+  theme_minimal()
+
+plot10
+```
+
+Dado que tenemos datos semanales y parece existir a simple vista un claro patrón estacional anual durante las semanas finales de Noviembre y Diciembre donde hay un considerable aumento de las ventas; **NO** reservamos ninguna parte de dataset para test pues este finaliza el 26/10/2012, justo antes de los periodos con mayor consumo en los establecimientos, precisamente los que queremos predecir.
+
+### Estacionariedad
+
+Antes de analizar la serie mediante test estadísticos, analicemos gráficamente más en detalle, para confirmar la estacionalidad detectada.
+Dadas las características de la serie realizamos una descomposición STL para corroborar que existe tendencia y estacionalidad.
+
+```{r}
+# Convertir el dataset a un tsibble
+walmart_tsibble <- as_tsibble(walmart, key = Store, index = Date)
+```
+
+```{r}
+walmart_tsibble %>%
+  model(seats = feasts:::STL(Weekly_Sales)) %>%
+  components() %>%
+  autoplot() + 
+  theme(legend.position = "none") 
+```
+
+Se confirman visualmente las estacionalidades supuestas.
+
+<u>**Estacionariedad en MEDIA**</u>
+
+```{r}
+walmart_tsibble %>%  features(Weekly_Sales, unitroot_kpss)
+```
+
+<u>**Estacionariedad en VARIANZA**</u>
+
+```{r}
+
+```
+
+### Determinación del modelo
+
+```{r}
+
+```
+
+### Fase de estimación y contraste
+
+```{r}
+
+```
+
+### Diagnosis de residuos
+
+```{r}
+
+```
+
+<u>**Test de MEDIA = 0**</u>
+
+```{r}
+
+```
+
+<u>**Test de Autocorrelaciones**</u>
+
+```{r}
+
+```
+
+<u>**Test de Homocedasticidad**</u>
+
+```{r}
+
+```
+
+<u>**Test de Normalidad**</u>
+
+```{r}
+
+```
+
+### Fase de predicción
+
+Finalmente evaluamos la capacidad predictiva del modelo. Calculamos las predicciones y calculamos sus errores y los comparamos con los residuos.
+
+```{r}
+
+```
 
