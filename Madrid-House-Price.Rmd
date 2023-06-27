@@ -24,7 +24,7 @@ knitr::opts_chunk$set(
 )
 ```
 
-![](Gran_Vía_(Madrid)_1.jpg)
+![](Gran Vía Madrid.jpg)
 
 # Introducción y definición de objetivos
 
@@ -59,6 +59,17 @@ library(stringr)
 library(Metrics)
 library(factoextra)
 library(NbClust)
+
+# Librerías para SERIES TEMPORALES
+library(xts)
+library(forecast)
+library(tsibble)
+library(tidyquant)
+library(feasts)
+library(fable)
+library(stats)
+library(zoo)
+library(DT)
 ```
 
 ```{r}
@@ -1539,7 +1550,7 @@ Después de evaluar todos los modelos de aprendizaje automático, se observa que
 
 \
 
-![](walmart.jpg)
+![](Walmart.jpg)
 
 \
 
@@ -1556,17 +1567,6 @@ Al analizar una serie temporal, se busca identificar patrones y estructuras temp
 Las series temporales pueden utilizarse en una amplia gama de aplicaciones, como pronósticos económicos, análisis de ventas, previsión del clima, análisis de datos financieros...
 
 En el contexto de nuestro proyecto con el dataset de ventas de Waltmark, nos disponemos a utilizar técnicas de análisis de series temporales para estudiar el comportamiento de las ventas a lo largo del tiempo, identificar patrones estacionales, detectar cambios en las tendencias, analizar el impacto de eventos especiales y realizar pronósticos de las ventas futuras.
-
-```{r}
-library(xts)
-library(forecast)
-library(tsibble)
-library(tidyquant)
-library(feasts)
-library(fable)
-library(zoo)
-library(DT)
-```
 
 ## Lectura y preparación de los datos 
 
@@ -1631,38 +1631,38 @@ formatCurrency <- function(x) {
 # Calcular estadísticas de Walmart para la variable Temperature
 walmart_stats_temperature <- walmart %>%
   group_by(Store) %>%
-  summarise(min = formatCurrency(min(Temperature)),
-            max = formatCurrency(max(Temperature)),
-            median = formatCurrency(median(Temperature)),
-            mean = formatCurrency(mean(Temperature)),
-            sd = formatCurrency(sd(Temperature)))
-
+  summarise(min = formatCurrency(round(min(Temperature),2)),
+            max = formatCurrency(round(max(Temperature),2)),
+            median = formatCurrency(round(median(Temperature),2)),
+            mean = formatCurrency(round(mean(Temperature),2)),
+            sd = formatCurrency(round(sd(Temperature),2)))
+            
 # Calcular estadísticas de Walmart para la variable Fuel_Price
 walmart_stats_fuel <- walmart %>%
   group_by(Store) %>%
-  summarise(min = formatCurrency(min(Fuel_Price)),
-            max = formatCurrency(max(Fuel_Price)),
-            median = formatCurrency(median(Fuel_Price)),
-            mean = formatCurrency(mean(Fuel_Price)),
-            sd = formatCurrency(sd(Fuel_Price)))
+  summarise(min = formatCurrency(round(min(Fuel_Price),2)),
+            max = formatCurrency(round(max(Fuel_Price),2)),
+            median = formatCurrency(round(median(Fuel_Price),2)),
+            mean = formatCurrency(round(mean(Fuel_Price),2)),
+            sd = formatCurrency(round(sd(Fuel_Price),2)))
 
 # Calcular estadísticas de Walmart para la variable CPI
 walmart_stats_cpi <- walmart %>%
   group_by(Store) %>%
-  summarise(min = formatCurrency(min(CPI)),
-            max = formatCurrency(max(CPI)),
-            median = formatCurrency(median(CPI)),
-            mean = formatCurrency(mean(CPI)),
-            sd = formatCurrency(sd(CPI)))
+  summarise(min = formatCurrency(round(min(CPI),2)),
+            max = formatCurrency(round(max(CPI),2)),
+            median = formatCurrency(round(median(CPI),2)),
+            mean = formatCurrency(round(mean(CPI),2)),
+            sd = formatCurrency(round(sd(CPI),2)))
 
 # Calcular estadísticas de Walmart para la variable Unemployment
 walmart_stats_unemployment <- walmart %>%
   group_by(Store) %>%
-  summarise(min = formatCurrency(min(Unemployment)),
-            max = formatCurrency(max(Unemployment)),
-            median = formatCurrency(median(Unemployment)),
-            mean = formatCurrency(mean(Unemployment)),
-            sd = formatCurrency(sd(Unemployment)))
+  summarise(min = formatCurrency(round(min(Unemployment),2)),
+            max = formatCurrency(round(max(Unemployment),2)),
+            median = formatCurrency(round(median(Unemployment),2)),
+            mean = formatCurrency(round(mean(Unemployment),2)),
+            sd = formatCurrency(round(sd(Unemployment),2)))
 
 # Mostrar la tabla con los resultados para la variable Temperature
 datatable(walmart_stats_temperature, options = list(scrollY = "300px", paging = FALSE), caption = "TEMPERATURE")
@@ -1740,12 +1740,12 @@ formatCurrency <- function(x) {
 # Calcular estadísticas de Walmart
 walmart_stats <- walmart %>%
   group_by(Store) %>%
-  summarise(min = formatCurrency(min(Weekly_Sales)),
-            max = formatCurrency(max(Weekly_Sales)),
-            median = formatCurrency(median(Weekly_Sales)),
-            mean = formatCurrency(mean(Weekly_Sales)),
-            sd = formatCurrency(sd(Weekly_Sales)),
-            sum = formatCurrency(sum(Weekly_Sales)))
+  summarise(min = formatCurrency(round(min(Weekly_Sales),2)),
+            max = formatCurrency(round(max(Weekly_Sales),2)),
+            median = formatCurrency(round(median(Weekly_Sales),2)),
+            mean = formatCurrency(round(mean(Weekly_Sales),2)),
+            sd = formatCurrency(round(sd(Weekly_Sales),2)),
+            sum = formatCurrency(round(sum(Weekly_Sales),2)))
 
 # Mostrar la tabla con los resultados
 datatable(walmart_stats, options = list(scrollY = "300px", paging = FALSE), caption = "SALES")
@@ -1762,10 +1762,10 @@ ventas_por_tienda$Store <- factor(ventas_por_tienda$Store, levels = ventas_por_t
 plot7 <- ggplot(ventas_por_tienda, aes(x = Weekly_Sales, y = Store)) +
   geom_bar(stat = "identity", fill = "#FFB21C") +
   labs(x = "Total Sales (Millions)", y = "Store", title = "Total Sales per Store Aggregated by Sum") +
-  theme(plot.title = element_text(hjust = 0.5)) +
   scale_y_discrete(labels = ventas_por_tienda$Store) +
   scale_x_continuous(labels = scales::unit_format(unit = "M", scale = 1e-6)) +
-  theme_minimal()
+  theme_minimal() +
+  theme(plot.title = element_text(hjust = 0.5))
 
 plot7
 ```
@@ -1797,6 +1797,7 @@ variables <- c("Weekly_Sales", "Temperature", "Fuel_Price", "CPI", "Unemployment
 data <- walmart[, variables]
 correlation_matrix <- cor(data)
 plot9 <- ggcorrplot(correlation_matrix, type = "lower", lab = TRUE, lab_size = 3)
+
 plot9
 ```
 
@@ -1804,7 +1805,7 @@ plot9
 
 ## Análisis y gráficos de series temporales
 
-Antes de graficar las series temporales de nuestro dataset vamos a sacar por tienda las 3 mayores ventas y el restos de las variables asociadas a las mismas, principalmente para identificar si hay algún patrón como que todas se producen en las mismas fechas, que todas tienen unos índeces CPI concretos o que están sujetas a unas tasas de desempleo específicas...
+Antes de graficar las series temporales de nuestro dataset vamos a sacar por tienda las 3 mayores ventas y el restos de las variables asociadas a las mismas para tratar de identificar si hay algún patrón como que todas se producen en las mismas fechas, que todas tienen unos índeces CPI concretos o que están sujetas a unas tasas de desempleo específicas...
 
 ```{r}
 # Función para formatear números como moneda en formato americano
@@ -1818,18 +1819,20 @@ walmart_top5sales <- walmart %>%
   top_n(3, Weekly_Sales) %>%
   summarise(Max_Weekly_Sales = formatCurrency(Weekly_Sales),
             Date = Date,
-            Fuel_Price = Fuel_Price,
-            CPI = CPI,
-            Unemployment = Unemployment)
+            Fuel_Price = formatCurrency(round(Fuel_Price,2)),
+            CPI = formatCurrency(round(CPI,2)),
+            Unemployment = formatCurrency(round(Unemployment,2)))
 
 # Mostrar la tabla con los resultados
 datatable(walmart_top5sales, options = list(scrollY = "300px", paging = FALSE), caption = "TOP 3 WEEKLY SALES PER STORE")
 ```
 
+Ahora sacamos las 10 mayores ventas del dataset.
+
 ```{r}
 # Función para formatear números como moneda en formato americano
 formatCurrency <- function(x) {
-  format(x, big.mark = ",", decimal.mark = ".", nsmall = 2, trim = TRUE, scientific = FALSE)
+  format(x, big.mark = ".", decimal.mark = ",", nsmall = 2, trim = TRUE, scientific = FALSE)
 }
 
 # Obtener los 10 primeros días con más ventas y aplicar el formato de moneda
@@ -1840,12 +1843,16 @@ top_10_days <- walmart %>%
   arrange(desc(total_sales)) %>%
   mutate(total_sales = formatCurrency(total_sales))
 
-datatable(top_10_days, options = list(scrollY = "300px", paging = FALSE), caption = "Top 10 Days with Highest Sales")
+datatable(top_10_days, options = list(scrollY = "300px", paging = FALSE), caption = "TOP 10 DAYS WITH HIGHEST SALES")
 ```
 
-Se observa claramente como 6 de esos 10 días con más ventas son las semanas de Navidad, seguido por Acción de Gracias en noviembre.
+Se observa claramente como en ambas tablas las semanas de Navidad y Acción de Gracias en noviembre tienen el record de ventas todos los años.
+
+\
 
 <u>**GRÁFICO SERIE TEMPORAL**</u>
+
+Comenzamos realizando con unos gráficos de líneas temporales en las variables más relevantes que deseamos analizar.
 
 ```{r}
 walmart <- arrange(walmart, Date)
@@ -1853,19 +1860,57 @@ walmart <- arrange(walmart, Date)
 plot10 <- ggplot(walmart, aes(x = Date, y = Weekly_Sales)) +
   geom_line() +
   labs(x = "Date", y = "Weekly Sales", title = "Weekly Sales Time Series Plot") +
-  theme(plot.title = element_text(hjust = 0.5)) +
   scale_y_continuous(labels = unit_format(unit = "M", scale = 1e-6)) + 
-  theme_minimal()
+  theme_minimal() +
+  theme(plot.title = element_text(hjust = 0.5))
 
 plot10
 ```
 
-Dado que tenemos datos semanales y parece existir a simple vista un claro patrón estacional anual durante las semanas finales de Noviembre y Diciembre donde hay un considerable aumento de las ventas; **NO** reservamos ninguna parte de dataset para test pues este finaliza el 26/10/2012, justo antes de los periodos con mayor consumo en los establecimientos, precisamente los que queremos predecir.
+```{r}
+plot11 <- ggplot(walmart, aes(x = Date, y = Temperature)) +
+  geom_line() +
+  labs(x = "Date", y = "Temperature", title = "Temperature Time Series Plot") +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  theme_minimal()
+
+plot12 <- ggplot(walmart, aes(x = Date, y = Fuel_Price)) +
+  geom_line() +
+  labs(x = "Date", y = "Fuel Price", title = "Fuel Price Time Series Plot") +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  theme_minimal()
+
+plot13 <- ggplot(walmart, aes(x = Date, y = CPI)) +
+  geom_line() +
+  labs(x = "Date", y = "CPI", title = "CPI Time Series Plot") +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  theme_minimal()
+
+plot14 <- ggplot(walmart, aes(x = Date, y = Unemployment)) +
+  geom_line() +
+  labs(x = "Date", y = "Unemployment", title = "Unemployment Time Series Plot") +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  theme_minimal()
+
+grid <- grid.arrange(plot11, plot12, plot13, plot14, nrow = 2, ncol = 2)
+```
+
+El gráfico de la **temperatura** muestra un comportamiento totalmente normal donde se pueden identificar a simple vista las estaciones y sus variaciones de temperatura entre invierno y verano.
+
+El gráfico del **precio del combustible** muestra una relativa estabilidad en precios sufriendo una subida a partir del primer trimestre del 2010 teniendo su punto más álgido en el segundo trimestre del año; punto a partir del cual vuelve a bajar situándose cerca de los 2,5 dólares por galón en el tercer trimestre del año. No es así en el cuarto trimestre donde se origina una vertiginosa subida del precio por galón hasta el segundo trimestre del 2011, pasando de 2,5 a 4 dólares. 
+Desde este punto hasta el final del año se produce otra severa caída de precios cerrando el año 2011 alrededor de los 3,25 dólares.
+Durante el año 2012 se van produciendo unas subidas y bajadas de precios con bastante apuntamiento entre los 3,25 y 4 dólares.
+
+El gráfico del **CPI** muestra un comportamiento monótono creciente pero de manera apaisada que nos indica que el gasto medio en la lista de la compra va aumentando lentamente de manera progresiva. No obstante el gráfico muestra gran varianza en este índice debido precisamente a lo ya comentado con anteriorida; hay tiendas Walmart situadas en regiones de EEUU donde índice de población y el poder adquisitivo es menor y otras donde es mayor, diferencias entre estados rurales y grandes urbes.
+
+El gráfico de la tasa **Unemployment** parece que se muestra estable a lo largo del 2010 y 2011 hasta comenzar 2012 donde generalmente se va produciendo una caída en las tasas de desempleo.
 
 ### Estacionariedad
 
 Antes de analizar la serie mediante test estadísticos, analicemos gráficamente más en detalle, para confirmar la estacionalidad detectada.
-Dadas las características de la serie realizamos una descomposición STL para corroborar que existe tendencia y estacionalidad.
+Dadas las características de la serie realizamos una _descomposición STL*_ para corroborar que existe tendencia y estacionalidad.
+
+_* La descomposición STL (Seasonal and Trend decomposition using Loess) es un método utilizado para descomponer una serie temporal en sus componentes de tendencia, estacionalidad y residuos. Utiliza un enfoque no paramétrico basado en el ajuste de suavizadores locales (Loess) para estimar la tendencia y la estacionalidad de la serie temporal. La tendencia representa el patrón general y de largo plazo en los datos, mientras que la estacionalidad captura los patrones recurrentes y periódicos. Los residuos son la parte de la serie temporal que no puede ser explicada por la tendencia y la estacionalidad._
 
 ```{r}
 # Convertir el dataset a un tsibble
@@ -1873,11 +1918,21 @@ walmart_tsibble <- as_tsibble(walmart, key = Store, index = Date)
 ```
 
 ```{r}
-walmart_tsibble %>%
+walmart_tsibble_train <- walmart_tsibble %>% filter_index(. ~ "2012-06-29")
+walmart_tsibble_test <- walmart_tsibble %>% filter_index("2012-07-06" ~ .)
+```
+
+```{r}
+walmart_tsibble_train %>%
   model(seats = feasts:::STL(Weekly_Sales)) %>%
   components() %>%
-  autoplot() + 
-  theme(legend.position = "none") 
+  autoplot() +
+  theme(legend.position = "none") +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  scale_y_continuous(labels = unit_format(unit = "M", scale = 1e-6)) +
+  theme(panel.grid.major = element_line(color = "grey"),
+        panel.grid.minor = element_line(color = "grey"),
+        panel.border = element_rect(color = "grey", fill = NA))
 ```
 
 Se confirman visualmente las estacionalidades supuestas.
