@@ -1908,9 +1908,11 @@ El gráfico de la tasa **Unemployment** parece que se muestra estable a lo largo
 ### Estacionariedad
 
 Antes de analizar la serie mediante test estadísticos, analicemos gráficamente más en detalle, para confirmar la estacionalidad detectada.
-Dadas las características de la serie realizamos una _descomposición STL*_ para corroborar que existe tendencia y estacionalidad.
+Dadas las características de la serie realizamos una ***descomposición STL*** para corroborar que existe tendencia y estacionalidad.
 
-_* La descomposición STL (Seasonal and Trend decomposition using Loess) es un método utilizado para descomponer una serie temporal en sus componentes de tendencia, estacionalidad y residuos. Utiliza un enfoque no paramétrico basado en el ajuste de suavizadores locales (Loess) para estimar la tendencia y la estacionalidad de la serie temporal. La tendencia representa el patrón general y de largo plazo en los datos, mientras que la estacionalidad captura los patrones recurrentes y periódicos. Los residuos son la parte de la serie temporal que no puede ser explicada por la tendencia y la estacionalidad._
+\
+
+*La descomposición STL (Seasonal and Trend decomposition using Loess) es un método utilizado para descomponer una serie temporal en sus componentes de tendencia, estacionalidad y residuos. Utiliza un enfoque no paramétrico basado en el ajuste de suavizadores locales (Loess) para estimar la tendencia y la estacionalidad de la serie temporal. La tendencia representa el patrón general y de largo plazo en los datos, mientras que la estacionalidad captura los patrones recurrentes y periódicos. Los residuos son la parte de la serie temporal que no puede ser explicada por la tendencia y la estacionalidad.*
 
 ```{r}
 # Convertir el dataset a un tsibble
@@ -1937,6 +1939,44 @@ walmart_tsibble_train %>%
 
 Se confirman visualmente las estacionalidades supuestas.
 
+```{r}
+walmart_tsibble_train %>%
+  model(seats = feasts:::STL(Fuel_Price)) %>%
+  components() %>%
+  autoplot() +
+  theme(legend.position = "none") +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  theme(panel.grid.major = element_line(color = "grey"),
+        panel.grid.minor = element_line(color = "grey"),
+        panel.border = element_rect(color = "grey", fill = NA))
+```
+
+```{r}
+walmart_tsibble_train %>%
+  model(seats = feasts:::STL(CPI)) %>%
+  components() %>%
+  autoplot() +
+  theme(legend.position = "none") +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  theme(panel.grid.major = element_line(color = "grey"),
+        panel.grid.minor = element_line(color = "grey"),
+        panel.border = element_rect(color = "grey", fill = NA))
+```
+
+```{r}
+walmart_tsibble_train %>%
+  model(seats = feasts:::STL(Unemployment)) %>%
+  components() %>%
+  autoplot() +
+  theme(legend.position = "none") +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  theme(panel.grid.major = element_line(color = "grey"),
+        panel.grid.minor = element_line(color = "grey"),
+        panel.border = element_rect(color = "grey", fill = NA))
+```
+
+\
+
 <u>**Estacionariedad en MEDIA**</u>
 
 ```{r}
@@ -1955,6 +1995,11 @@ walmart_tsibble %>%  features(Weekly_Sales, unitroot_kpss)
 
 ```
 
+#### Modelo A
+
+#### Modelo B
+
+
 ### Fase de estimación y contraste
 
 ```{r}
@@ -1967,7 +2012,7 @@ walmart_tsibble %>%  features(Weekly_Sales, unitroot_kpss)
 
 ```
 
-<u>**Test de MEDIA = 0**</u>
+<u>**Test de Media = 0**</u>
 
 ```{r}
 
