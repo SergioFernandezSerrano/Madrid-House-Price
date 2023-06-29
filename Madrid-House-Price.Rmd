@@ -1259,7 +1259,7 @@ Esto significa que:
 
 La precisión del modelo es del 90.77%.
 
-*Elección del Kernel*
+<u>**Elección del Kernel**</u>
 
 La elección del kernel en un modelo SVM depende de la naturaleza y la distribución de los datos. No hay una regla única para seleccionar el kernel, pero aquí hay algunas pautas generales para ayudarte a tomar una decisión:
 
@@ -1270,7 +1270,6 @@ La elección del kernel en un modelo SVM depende de la naturaleza y la distribuc
 -   Kernel radial (RBF): El kernel radial es una opción popular y versátil en muchos casos, especialmente cuando no se sabe de antemano si los datos son linealmente separables. Puede manejar datos no lineales y complejos. Sin embargo, encontrar los parámetros adecuados (costo y gamma) puede requerir una búsqueda en el espacio de parámetros y, en consecuencia, un mayor tiempo de cómputo.
 
 -   Kernel sigmoide: El kernel sigmoide es similar a una función de activación de una red neuronal y puede ser una opción si deseas un enfoque similar al de una red neuronal pero con un modelo SVM.
-
 
 Vamos a probar a representar los datos para ver si de alguna manera puede tomarse una mejor decisión sobre el Kernel a usar.
 
@@ -1365,12 +1364,12 @@ K-fold Cross Validation es un método de validación cruzada donde la idea princ
 
 El proceso de K-fold Cross Validation es el siguiente:
 
--   Dividir el conjunto de datos en K subconjuntos (folds) de aproximadamente el mismo tamaño.
---    Para cada fold:
----   a. Utilizar K-1 folds para entrenar el modelo.
----   b. Utilizar el fold restante como conjunto de prueba para evaluar el rendimiento del modelo.
--   Repetir el proceso K veces, asegurándose de que cada fold se utilice como conjunto de prueba exactamente una vez.
--   Calcular métricas de rendimiento, como precisión, error cuadrático medio, etc., para cada una de las K iteraciones y promediar los resultados para obtener una estimación más sólida del rendimiento del modelo.
+* Dividir el conjunto de datos en K subconjuntos (folds) de aproximadamente el mismo tamaño.
+  + Para cada fold:
+    - a. Utilizar K-1 folds para entrenar el modelo.
+    - b. Utilizar el fold restante como conjunto de prueba para evaluar el rendimiento del modelo.
+* Repetir el proceso K veces, asegurándose de que cada fold se utilice como conjunto de prueba exactamente una vez.
+* Calcular métricas de rendimiento, como precisión, error cuadrático medio, etc., para cada una de las K iteraciones y promediar los resultados para obtener una estimación más sólida del rendimiento del modelo.
 
 La ventaja principal de utilizar K-fold Cross Validation es que todos los datos se utilizan tanto para entrenamiento como para pruebas, lo que proporciona una mejor estimación del rendimiento del modelo. Además, al repetir el proceso K veces, se reduce la varianza en las métricas de rendimiento, lo que resulta en una evaluación más confiable del modelo.
 
@@ -1525,6 +1524,7 @@ lines(roc_rf, col = "darkred", lwd = 2)
 legend("bottomright", legend = c("GLM", "KNN", "Decisión Tree", "Random Forest", "SVM"),
        col = c("blue", "red", "green", "darkred", "orange"), lwd = 2)
 ```
+
 <u>**CONCLUSIONES**</u>
 
 Después de evaluar todos los modelos de aprendizaje automático, se observa que los mejores resultados se obtienen con el modelo de Random Forest y el modelo SVM (Support Vector Machine). Sin embargo, el modelo Random Forest es preferido sobre el modelo SVM por las siguientes razones:
@@ -1537,13 +1537,34 @@ Después de evaluar todos los modelos de aprendizaje automático, se observa que
 
 4. **Rendimiento similar:** A pesar de las ventajas mencionadas anteriormente, la elección entre Random Forest y SVM se basa en gran medida en su rendimiento en la tarea específica. En este caso, ambos modelos proporcionan resultados similares, lo que respalda la decisión de elegir el modelo Random Forest debido a sus otras ventajas.
 
-
 # Deep Learning
 
+El Deep Learning es una rama del aprendizaje automático (machine learning) que se enfoca en el entrenamiento de redes neuronales artificiales profundas para aprender y extraer patrones complejos a partir de datos. Estas redes neuronales se componen de múltiples capas de nodos interconectados, lo que les permite aprender representaciones de datos en diferentes niveles de abstracción.
+
+A diferencia de otros métodos de aprendizaje automático, el Deep Learning se caracteriza por su capacidad para aprender automáticamente características relevantes directamente de los datos, sin necesidad de que sean especificadas o extraídas manualmente. Esto lo logra mediante el proceso de entrenamiento, donde la red neuronal ajusta los pesos y los sesgos de sus conexiones para minimizar una función de pérdida y mejorar la capacidad de predicción o clasificación.
+
+El Deep Learning ha mostrado un gran éxito en una amplia variedad de tareas de aprendizaje automático, como reconocimiento de imágenes, procesamiento de lenguaje natural, reconocimiento de voz, traducción automática... Esto se debe a su capacidad para modelar relaciones y patrones complejos en los datos, así como a la disponibilidad de grandes conjuntos de datos y avances en hardware de computación como los GPUs que aceleran el entrenamiento de redes neuronales profundas.
+
+Algunas de las arquitecturas de redes neuronales profundas más utilizadas en Deep Learning incluyen las redes neuronales convolucionales (CNN) para el procesamiento de imágenes, redes neuronales recurrentes (RNN) para el procesamiento de secuencias y las redes neuronales generativas adversariales (GAN) para la generación de contenido nuevo.
+
+Entonces... ¿Cómo funcionan?
+
+Se podría decir que funcionan como un cerebro humano, hay neuronas y cada una de ellas recibe diferentes señales de entrada (𝑥1, 𝑥2, ...) de fuentes externas o de otras neuronas.
+Cada señal de entrada se multiplica por un valor denominado peso que da una idea de la fuerza de dicha conexión (𝑤1, 𝑤2, ...).
+La fase de entrenamiento modifica los pesos, y la neurona calcula una salida, usando Σ y una función de activación 𝑓.
+
+Aplicado a nuestro dataset del mercado inmobiliario en Madrid, vamos a ir entrenando una red neuronal con distintas configuraciones de capas, neuronas y funciones de activación para ver si obtenemos un modelo realmente predictivo del precio de los inmuebles y por consiguiente generar una buena herramienta de clasificación de los mismos.
+
+```{r}
+
+```
 
 
 # Explicabilidad
 
+```{r}
+
+```
 
 
 # Series Temporales
@@ -1569,8 +1590,6 @@ Las series temporales pueden utilizarse en una amplia gama de aplicaciones, como
 En el contexto de nuestro proyecto con el dataset de ventas de Waltmark, nos disponemos a utilizar técnicas de análisis de series temporales para estudiar el comportamiento de las ventas a lo largo del tiempo, identificar patrones estacionales, detectar cambios en las tendencias, analizar el impacto de eventos especiales y realizar pronósticos de las ventas futuras.
 
 ## Lectura y preparación de los datos 
-
-\
 
 ```{r}
 walmart <- read_csv("walmart.csv")
@@ -1616,7 +1635,6 @@ A continuación, la descripción de cada una de las variables:
   - **CPI**: Índice de precios del cliente. Es un indicador utilizado para medir los cambios en el nivel de precios de bienes y servicios a lo largo del tiempo. El CPI es calculado por la Oficina de Estadísticas Laborales (Bureau of Labor Statistics) y es ampliamente utilizado como una medida de la inflación en la economía. Se basa en una "cesta de bienes" que representa los productos y servicios típicos que consume un hogar promedio. Es lo mismo que el IPC (Índice de Precio al Consumo).
   
   - **Unemployment**: Tasa de desempleo en la región donde se encuentra situada la tienda
-
 
 ## Análisis y gráficos univariante
 
@@ -1677,7 +1695,6 @@ datatable(walmart_stats_cpi, options = list(scrollY = "300px", paging = FALSE), 
 datatable(walmart_stats_unemployment, options = list(scrollY = "300px", paging = FALSE), caption = "UNEMPLOYMENT")
 ```
 
-
 ```{r}
 plot1 <- ggplot(walmart, aes(x = "", y = Temperature)) +
   geom_boxplot(fill = "#FFB21C") +
@@ -1728,7 +1745,6 @@ plot6
 Parece que dependiendo de la región donde se encuentre la tienda hay una mayor dispersión del gasto promedio en una cesta de la compra; y la tasa de desempleo también contribuye de manera relevante acentuándo dicha dispersión.
 El inconveniente es que a través del dataset desconocemos las regiones de EEUU donde se sitúan las 45 tiendas Walmart por lo que no podemos interpretar si tiene o no demasiado sentido, vamos a suponer que sí ya que no es lo mismo una tienda situada en un estado con mayor población que otro, y no es lo mismo una tienda en los estados rurales que en las grandes urbes de ambas costas.
 
-
 Ahora nos disponemoa a analizar las ventas semanales usando la variable **Weekly_Sales**.
 
 ```{r}
@@ -1770,7 +1786,6 @@ plot7 <- ggplot(ventas_por_tienda, aes(x = Weekly_Sales, y = Store)) +
 plot7
 ```
 
-
 ```{r}
 plot8 <- ggplot(walmart, aes(x = as.factor(Store), y = Weekly_Sales, fill = as.factor(Store))) +
   geom_boxplot(fill = "#FFB21C") +
@@ -1786,7 +1801,6 @@ plot8
 
 Este boxplot tampoco es muy exclarecedor, en muchas tiendas exite gran dispersión de los datos dentro del rango intercuartílico y hay datos muy atípicos. Esto puede sugerir que la distribución de datos está sesgada. Insistimos en que sin conocer las regiones donde se encuentran las tiendas es muy complicado llegar a más conclusiones o a un mejor entendimiento.
 
-
 ## Análisis y gráficos multivariante
 
 Una vez analizadas todas las variables de forma individual, podemos buscar algunas relaciones entre ellas mediante el siguiente análisis multivariante donde se pueden observar que existen correlaciones muy débiles, sólo pudiendo destacarse la correlación negativa del -0.3 que existe entre el CPI y la tasa de Unemployment; correlación que tiene bastante lógica dado que a mayor tasa de desempleo el gasto promedio en una cesta de la compra se verá redicido.
@@ -1800,8 +1814,6 @@ plot9 <- ggcorrplot(correlation_matrix, type = "lower", lab = TRUE, lab_size = 3
 
 plot9
 ```
-
-
 
 ## Análisis y gráficos de series temporales
 
