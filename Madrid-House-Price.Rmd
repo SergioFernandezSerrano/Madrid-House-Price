@@ -59,6 +59,7 @@ library(stringr)
 library(Metrics)
 library(factoextra)
 library(NbClust)
+library(neuralnet)
 
 # Librerías para SERIES TEMPORALES
 library(xts)
