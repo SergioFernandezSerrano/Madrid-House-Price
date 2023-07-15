@@ -60,6 +60,7 @@ library(Metrics)
 library(factoextra)
 library(NbClust)
 library(neuralnet)
+library(reticulate)
 
 # Librerías para SERIES TEMPORALES
 library(xts)
@@ -71,6 +72,8 @@ library(fable)
 library(stats)
 library(zoo)
 library(DT)
+library(signal)
+library(entropy)
 ```
 
 ```{r}
@@ -1560,6 +1563,10 @@ Aplicado a nuestro dataset del mercado inmobiliario en Madrid, vamos a ir entren
 
 ```
 
+```{python}
+
+```
+
 
 # Explicabilidad
 
@@ -1950,7 +1957,7 @@ walmart_tsibble_train %>%
         panel.border = element_rect(color = "grey", fill = NA))
 ```
 
-Se confirman visualmente las estacionalidades supuestas.
+Se confirman visualmente las estacionalidades supuestas. Realizamos el mismo proceso con el resto de variables del dataset.
 
 ```{r}
 walmart_tsibble_train %>%
@@ -1964,6 +1971,8 @@ walmart_tsibble_train %>%
         panel.border = element_rect(color = "grey", fill = NA))
 ```
 
+De manera general existe una tendencia alcista en el precio del fuel con clara estacionariaded durante la primera mitad del año.
+
 ```{r}
 walmart_tsibble_train %>%
   model(seats = feasts:::STL(CPI)) %>%
@@ -1975,6 +1984,8 @@ walmart_tsibble_train %>%
         panel.grid.minor = element_line(color = "grey"),
         panel.border = element_rect(color = "grey", fill = NA))
 ```
+
+Leve tendencia alcista en el caso del índice CPI. También existe estacionariaded durante la primera mitad del año.
 
 ```{r}
 walmart_tsibble_train %>%
@@ -1988,19 +1999,196 @@ walmart_tsibble_train %>%
         panel.border = element_rect(color = "grey", fill = NA))
 ```
 
+Por el contrario para la tasa de desempleo la tendencia es bajista. No se observa una clara estacionariedad.
+
+## Modelos de series temporales
+
+Tras esta descomposión por variable y teniendo en cuenta todo el dataset y toda la serie temporal para cada una de las tiendas, nos disponemos a la realización de modelos específicos pero sólo para la variable **Weekly_Sales** en agregado en lugar de para cada tienda.
+
+```{r}
+walmart_tsibble_train_agg <- as_tsibble(aggregate(Weekly_Sales ~ Date, data = walmart_tsibble_train, FUN = sum))
+walmart_tsibble_test_agg <- as_tsibble(aggregate(Weekly_Sales ~ Date, data = walmart_tsibble_test, FUN = sum))
+```
+
+```{r}
+plot15 <- ggplot(data = walmart_tsibble_train_agg, aes(x = Date, y = Weekly_Sales)) +
+    geom_line() +
+    labs(x = "Date", y = "Weekly Sales", title = "Aggregated Weekly Sales Time Series Plot") +
+    scale_y_continuous(labels = unit_format(unit = "M", scale = 1e-6)) + 
+    theme_minimal() +
+    theme(plot.title = element_text(hjust = 0.5))
+
+plot15
+```
+
+```{r}
+walmart_tsibble_train_agg %>%
+  model(seats = STL(Weekly_Sales)) %>%
+  components() %>%
+  autoplot() +
+  theme(legend.position = "none") +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  scale_y_continuous(labels = unit_format(unit = "M", scale = 1e-6)) +
+  theme(panel.grid.major = element_line(color = "grey"),
+        panel.grid.minor = element_line(color = "grey"),
+        panel.border = element_rect(color = "grey", fill = NA))
+```
+
+Las descomposiciones STL son la base de varias características. Una descomposición en serie temporal puede utilizarse para medir la fuerza de la tendencia y la estacionalidad en una serie temporal.
+
+En el caso de los datos de tendencias fuertes, los datos ajustados estacionalmente deberían tener mucha más variación que el componente restante.
+
+Una serie con fuerza estacional cerca de 0 no muestra casi ninguna estacionalidad, mientras que una serie con una fuerte estacionalidad cercana a 1.
+
+Otras características útiles basadas en la STL incluyen la cronología de los picos y los valles,  qué mes o trimestre contiene el mayor componente estacional y cuál contiene el menor componente estacional. Esto nos dice algo sobre la naturaleza de la estacionalidad.
+
+En el caso de Walmart el estudio de características STL nos revela lo siguiente:
+
+```{r}
+walmart_tsibble_train_agg %>% features(Weekly_Sales, feat_stl)
+```
+
+-   **trend_strength**: Esta métrica representa la fuerza de la tendencia en los datos. Un valor más alto indica una tendencia más fuerte en los datos. En nuestro caso un valor de 0.3315853 sugiere que hay una tendencia discernible en los datos, pero no es demasiado pronunciada. Esto implica que la serie de ventas semanales de Walmart muestra cierta dirección o patrón a lo largo del tiempo, pero no está experimentando cambios extremadamente marcados o una tendencia muy fuerte.
+
+-   **spikiness**: Esta métrica representa la irregularidad o "picos" en los datos. Un valor más alto indica una mayor presencia de picos o variaciones abruptas en los datos. En nuestro caso el valor de 5.235051 indica que hay una alta variabilidad en la presencia de picos en tus datos. Esto implica que las ventas semanales de Walmart pueden experimentar fluctuaciones significativas en ciertos períodos, con la presencia de valores atípicos o picos altos en comparación con los valores promedio; como se puede apreciar en la gráfica y ya anteriormente comentado las semanas de Navidad y Acción de Gracias.
+
+-   **linearity**: Esta métrica representa la linealidad en los datos. Un valor más alto indica una mayor linealidad en los datos, lo que implica que los datos siguen una tendencia lineal.
+
+-   **curvature**: Esta métrica representa la curvatura en los datos. Se basa en el coeficiente de una regresión cuadrática ortogonal aplicada al componente de tendencia. Un valor más alto indica una mayor curvatura en los datos, lo que implica que los datos tienen una forma más curva o no lineal.
+
 \
+
+Los valores de los indicadores de autocorrelación, como stl_e_acf1 y stl_e_acf10, pueden variar entre -1 y 1.
+
+- Un valor de 1 indica una autocorrelación positiva perfecta, lo que significa que los valores pasados y presentes están completamente correlacionados y se puede predecir uno a partir del otro de manera precisa.
+
+- Un valor de -1 indica una autocorrelación negativa perfecta, lo que significa que los valores pasados y presentes están completamente correlacionados, pero en dirección opuesta, y se puede predecir uno a partir del otro de manera precisa.
+
+- Un valor cercano a 0 indica una autocorrelación débil o nula, lo que implica que no hay una relación lineal o predictiva fuerte entre los valores pasados y presentes.
+
+En nuestro caso:
+
+-   **stl_e_acf1**: Esta métrica representa la autocorrelación a nivel de error después de aplicar la descomposición STL. Es es el primer coeficiente de autocorrelación de la serie residual. Un valor más alto indica una mayor correlación entre los errores residuales.
+
+-   **stl_e_acf10**: Esta métrica representa la autocorrelación a nivel de error hasta un retraso de 10 después de aplicar la descomposición STL. Es la suma de los cuadrados de los diez primeros coeficientes de autocorrelación de la serie residual. Un valor más alto indica una mayor correlación entre los errores residuales hasta un retraso de 10 períodos.
+
+\
+
+Otras características:
+
+**Spectral_entropy**: la entropía espectral de una serie temporal es una medida de lo fácil que es predecir la serie. Una serie que tiene una fuerte tendencia y estacionalidad (y por lo tanto es fácil de predecir) tendrá una entropía cercana a 0. Una serie que es muy ruidosa (y por lo tanto es difícil de predecir) tendrá una entropía cercana a 1.
+
+También indica la cantidad de información o desorden presente en la señal de la serie temporal. Cuanto mayor sea el valor de la entropía espectral, mayor será la variabilidad y la impredecibilidad de la señal.
+
+```{r}
+# Calcula la transformada de Fourier de la serie temporal
+fourier_transform <- abs(fft(walmart_tsibble_train_agg$Weekly_Sales))
+
+# Calcula la densidad espectral de potencia
+power_spectral_density <- fourier_transform^2
+
+# Calcula la entropía espectral
+spectral_entropy <- entropy(power_spectral_density, base = 2)
+
+print(spectral_entropy)
+```
+
+En nuestro caso, un valor de 0.1367035 sugiere que la señal tiene cierta variabilidad pero no es extremadamente caótica y fácil de predecir.
+
+### ARMA 
+
+
+
+### ARIMA 
+
+El modelo ARIMA (Autoregressive Integrated Moving Average) es uno de los modelos más utilizados para el análisis y la predicción de series temporales. Combina componentes autoregresivos (AR), componentes de promedio móvil (MA) y componentes de diferenciación (I) para capturar la estructura y los patrones presentes en los datos.
+
+El modelo ARIMA se define por tres parámetros principales: p, d y q.
+
+-   El parámetro **p** (orden del componente autoregresivo) indica el número de pasos de tiempo anteriores que se tienen en cuenta para predecir el valor actual. Un valor alto de p indica una dependencia fuerte de los valores pasados.
+
+-   El parámetro **d** (orden de diferenciación) representa el número de veces que se realiza la diferenciación para convertir una serie no estacionaria en una serie estacionaria. La diferenciación se utiliza para eliminar tendencias y estacionalidad en los datos.
+
+-   El parámetro **q** (orden del componente de promedio móvil) especifica el número de pasos de tiempo anteriores de los errores de predicción que se tienen en cuenta para predecir el valor actual. Un valor alto de q indica una dependencia fuerte de los errores pasados.
+
+En el proceso de ajuste de un modelo ARIMA implica la identificación de los valores óptimos de p, d y q, lo que se conoce como orden del modelo. Esto se puede lograr mediante técnicas como la función de autocorrelación (ACF) y la función de autocorrelación parcial (PACF), que ayudan a determinar la dependencia temporal en los datos.
+
+Es importante mencionar que el modelo ARIMA tiene algunas limitaciones y suposiciones, como la estacionariedad de la serie, la linealidad de las relaciones y la ausencia de valores atípicos.
+
+```{r}
+# Cálculo de la función de autocorrelación (ACF)
+acf_values <- acf(walmart_tsibble_train_agg$Weekly_Sales, lag.max = 126)
+
+# Cálculo de la función de autocorrelación parcial (PACF)
+pacf_values <- pacf(walmart_tsibble_train_agg$Weekly_Sales, lag.max = 126)
+
+# Gráfico de la función de autocorrelación (ACF)
+plot(acf_values, main = "ACF")
+
+# Gráfico de la función de autocorrelación parcial (PACF)
+plot(pacf_values, main = "PACF")
+```
+
+Una vez identificados posibles valores de p y q utilizando el análisis de ACF y PACF, realizamos la función auto.arima() para realizar una búsqueda automática y encontrar los mejores parámetros para el modelo.
+
+```{r}
+# Búsqueda automática de parámetros ARIMA
+arima_model <- auto.arima(walmart_tsibble_train_agg$Weekly_Sales)
+
+# Imprimir los parámetros óptimos encontrados
+print(arima_model)
+```
+
+-   **ARIMA(2,0,2) with non-zero mean**: Indica los órdenes de los componentes AR, I y MA del modelo ARIMA. En nuestro caso, se trata de un modelo ARIMA con 2 términos autoregresivos (AR), 0 diferencias (I) y 2 términos de media móvil (MA).
+
+-   **Coefficients**: Muestra los coeficientes estimados para cada componente del modelo ARIMA. En nuestro caso, se presentan los coeficientes estimados para los términos AR1, AR2, MA1, MA2 y la media no nula (mean).
+
+-   **sigma^2**: Es la varianza estimada del error del modelo. 
+
+-   **log likelihood**: Es el logaritmo de la verosimilitud del modelo, una medida de qué tan bien se ajusta el modelo a los datos observados. 
+
+-   **AIC, AICc, BIC**: Sson criterios de información utilizados para la selección de modelos. Cuanto más pequeño sea el valor, mejor se considera el modelo en términos de ajuste y parsimonia. En nuestro caso, se presentan los valores del AIC (4256.31), AIC corregido (AICc, 4257.01) y BIC (4273.33).
+
+
 
 <u>**Estacionariedad en MEDIA**</u>
 
+Una forma de determinar más objetivamente si es necesario diferenciar es utilizar una prueba de raíces unitarias. Se trata de contrastes de hipótesis estadísticos de estacionariedad que están diseñados para determinar si se requiere una diferenciación.
+
 ```{r}
-walmart_tsibble %>%  features(Weekly_Sales, unitroot_kpss)
+walmart_tsibble_train_agg %>%  features(Weekly_Sales, unitroot_kpss)
 ```
+
+-   **kpss_stat**: Este valor representa la estadística de prueba calculada en la prueba KPSS. En tu caso, el valor es 0.07319524. La estadística de prueba se compara con los valores críticos para determinar si la serie es estacionaria en media. Si la estadística de prueba es menor que el valor crítico, se rechaza la hipótesis nula de no estacionariedad en media y se considera que la serie es estacionaria en media.
+
+-   **kpss_pvalue**: Este valor es el valor p asociado a la estadística de prueba KPSS. En tu caso, el valor es 0.1. El valor p se utiliza para evaluar la significancia estadística de la prueba. Si el valor p es menor que un umbral predefinido (generalmente 0.05), se rechaza la hipótesis nula y se considera que la serie es estacionaria en media.
+
+En nuestro caso la estadística de prueba es menor que el valor crítico y el valor p es mayor que 0.05. Esto sugiere que no hay suficiente evidencia para rechazar la hipótesis nula de no estacionariedad en media. Por lo tanto, basado en los resultados de la prueba KPSS, podríamos decir que la serie no es estacionaria en media.
+
 
 <u>**Estacionariedad en VARIANZA**</u>
 
-```{r}
+Para estudiar la estacionariedad en varianza hemos realizado una prueba de homocedasticidad o constancia de la varianza a lo largo del tiempo. Una forma común de hacerlo es mediante el análisis de la función de autocorrelación condicional (ACF) de los residuos del modelo ajustado.
 
+```{r}
+# Ajustar el modelo ARIMA
+arima_model <- auto.arima(walmart_tsibble_train_agg$Weekly_Sales)
+
+# Obtener los residuos del modelo ajustado
+residuals_arima_model <- residuals(arima_model)
+
+# Calcular la ACF de los residuos
+acf_res <- acf(residuals_arima_model, lag.max = 126, plot = FALSE)
+
+# Graficar la ACF de los residuos
+plot(acf_res, main = "ACF of Residuals", xlab = "Lag", ylab = "ACF")
 ```
+
+En el gráfico de la función de autocorrelación condicional (ACF) de los residuos, se puede observar si existe alguna autocorrelación significativa en los rezagos (lags). Como los valores de la ACF están dentro de los intervalos de confianza y se aproximan a 0 a medida que aumenta el lag, indica que los residuos son ruido blanco y que la varianza es constante a lo largo del tiempo, lo que es indicativo de estacionariedad en varianza.
+
+El dato que sobresale claramente por encima del resto en el intervalo de confianza se debe precisamente al pico causado por Navidad y Acción de Gracias.
+
+
 
 ### Determinación del modelo
 
