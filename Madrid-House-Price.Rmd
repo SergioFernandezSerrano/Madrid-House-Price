@@ -2042,115 +2042,6 @@ Una serie con fuerza estacional cerca de 0 no muestra casi ninguna estacionalida
 
 Otras características útiles basadas en la STL incluyen la cronología de los picos y los valles,  qué mes o trimestre contiene el mayor componente estacional y cuál contiene el menor componente estacional. Esto nos dice algo sobre la naturaleza de la estacionalidad.
 
-En el caso de Walmart el estudio de características STL nos revela lo siguiente:
-
-```{r}
-walmart_tsibble_train_agg %>% features(Weekly_Sales, feat_stl)
-```
-
--   **trend_strength**: Esta métrica representa la fuerza de la tendencia en los datos. Un valor más alto indica una tendencia más fuerte en los datos. En nuestro caso un valor de 0.3315853 sugiere que hay una tendencia discernible en los datos, pero no es demasiado pronunciada. Esto implica que la serie de ventas semanales de Walmart muestra cierta dirección o patrón a lo largo del tiempo, pero no está experimentando cambios extremadamente marcados o una tendencia muy fuerte.
-
--   **spikiness**: Esta métrica representa la irregularidad o "picos" en los datos. Un valor más alto indica una mayor presencia de picos o variaciones abruptas en los datos. En nuestro caso el valor de 5.235051 indica que hay una alta variabilidad en la presencia de picos en tus datos. Esto implica que las ventas semanales de Walmart pueden experimentar fluctuaciones significativas en ciertos períodos, con la presencia de valores atípicos o picos altos en comparación con los valores promedio; como se puede apreciar en la gráfica y ya anteriormente comentado las semanas de Navidad y Acción de Gracias.
-
--   **linearity**: Esta métrica representa la linealidad en los datos. Un valor más alto indica una mayor linealidad en los datos, lo que implica que los datos siguen una tendencia lineal.
-
--   **curvature**: Esta métrica representa la curvatura en los datos. Se basa en el coeficiente de una regresión cuadrática ortogonal aplicada al componente de tendencia. Un valor más alto indica una mayor curvatura en los datos, lo que implica que los datos tienen una forma más curva o no lineal.
-
-\
-
-Los valores de los indicadores de autocorrelación, como stl_e_acf1 y stl_e_acf10, pueden variar entre -1 y 1.
-
-- Un valor de 1 indica una autocorrelación positiva perfecta, lo que significa que los valores pasados y presentes están completamente correlacionados y se puede predecir uno a partir del otro de manera precisa.
-
-- Un valor de -1 indica una autocorrelación negativa perfecta, lo que significa que los valores pasados y presentes están completamente correlacionados, pero en dirección opuesta, y se puede predecir uno a partir del otro de manera precisa.
-
-- Un valor cercano a 0 indica una autocorrelación débil o nula, lo que implica que no hay una relación lineal o predictiva fuerte entre los valores pasados y presentes.
-
-En nuestro caso:
-
--   **stl_e_acf1**: Esta métrica representa la autocorrelación a nivel de error después de aplicar la descomposición STL. Es es el primer coeficiente de autocorrelación de la serie residual. Un valor más alto indica una mayor correlación entre los errores residuales.
-
--   **stl_e_acf10**: Esta métrica representa la autocorrelación a nivel de error hasta un retraso de 10 después de aplicar la descomposición STL. Es la suma de los cuadrados de los diez primeros coeficientes de autocorrelación de la serie residual. Un valor más alto indica una mayor correlación entre los errores residuales hasta un retraso de 10 períodos.
-
-\
-
-Otras características:
-
-**Spectral_entropy**: la entropía espectral de una serie temporal es una medida de lo fácil que es predecir la serie. Una serie que tiene una fuerte tendencia y estacionalidad (y por lo tanto es fácil de predecir) tendrá una entropía cercana a 0. Una serie que es muy ruidosa (y por lo tanto es difícil de predecir) tendrá una entropía cercana a 1.
-
-También indica la cantidad de información o desorden presente en la señal de la serie temporal. Cuanto mayor sea el valor de la entropía espectral, mayor será la variabilidad y la impredecibilidad de la señal.
-
-```{r}
-# Calcula la transformada de Fourier de la serie temporal
-fourier_transform <- abs(fft(walmart_tsibble_train_agg$Weekly_Sales))
-
-# Calcula la densidad espectral de potencia
-power_spectral_density <- fourier_transform^2
-
-# Calcula la entropía espectral
-spectral_entropy <- entropy(power_spectral_density, base = 2)
-
-print(spectral_entropy)
-```
-
-En nuestro caso, un valor de 0.1367035 sugiere que la señal tiene cierta variabilidad pero no es extremadamente caótica y fácil de predecir.
-
-### ARMA 
-
-
-
-### ARIMA 
-
-El modelo ARIMA (Autoregressive Integrated Moving Average) es uno de los modelos más utilizados para el análisis y la predicción de series temporales. Combina componentes autoregresivos (AR), componentes de promedio móvil (MA) y componentes de diferenciación (I) para capturar la estructura y los patrones presentes en los datos.
-
-El modelo ARIMA se define por tres parámetros principales: p, d y q.
-
--   El parámetro **p** (orden del componente autoregresivo) indica el número de pasos de tiempo anteriores que se tienen en cuenta para predecir el valor actual. Un valor alto de p indica una dependencia fuerte de los valores pasados.
-
--   El parámetro **d** (orden de diferenciación) representa el número de veces que se realiza la diferenciación para convertir una serie no estacionaria en una serie estacionaria. La diferenciación se utiliza para eliminar tendencias y estacionalidad en los datos.
-
--   El parámetro **q** (orden del componente de promedio móvil) especifica el número de pasos de tiempo anteriores de los errores de predicción que se tienen en cuenta para predecir el valor actual. Un valor alto de q indica una dependencia fuerte de los errores pasados.
-
-En el proceso de ajuste de un modelo ARIMA implica la identificación de los valores óptimos de p, d y q, lo que se conoce como orden del modelo. Esto se puede lograr mediante técnicas como la función de autocorrelación (ACF) y la función de autocorrelación parcial (PACF), que ayudan a determinar la dependencia temporal en los datos.
-
-Es importante mencionar que el modelo ARIMA tiene algunas limitaciones y suposiciones, como la estacionariedad de la serie, la linealidad de las relaciones y la ausencia de valores atípicos.
-
-```{r}
-# Cálculo de la función de autocorrelación (ACF)
-acf_values <- acf(walmart_tsibble_train_agg$Weekly_Sales, lag.max = 126)
-
-# Cálculo de la función de autocorrelación parcial (PACF)
-pacf_values <- pacf(walmart_tsibble_train_agg$Weekly_Sales, lag.max = 126)
-
-# Gráfico de la función de autocorrelación (ACF)
-plot(acf_values, main = "ACF")
-
-# Gráfico de la función de autocorrelación parcial (PACF)
-plot(pacf_values, main = "PACF")
-```
-
-Una vez identificados posibles valores de p y q utilizando el análisis de ACF y PACF, realizamos la función auto.arima() para realizar una búsqueda automática y encontrar los mejores parámetros para el modelo.
-
-```{r}
-# Búsqueda automática de parámetros ARIMA
-arima_model <- auto.arima(walmart_tsibble_train_agg$Weekly_Sales)
-
-# Imprimir los parámetros óptimos encontrados
-print(arima_model)
-```
-
--   **ARIMA(2,0,2) with non-zero mean**: Indica los órdenes de los componentes AR, I y MA del modelo ARIMA. En nuestro caso, se trata de un modelo ARIMA con 2 términos autoregresivos (AR), 0 diferencias (I) y 2 términos de media móvil (MA).
-
--   **Coefficients**: Muestra los coeficientes estimados para cada componente del modelo ARIMA. En nuestro caso, se presentan los coeficientes estimados para los términos AR1, AR2, MA1, MA2 y la media no nula (mean).
-
--   **sigma^2**: Es la varianza estimada del error del modelo. 
-
--   **log likelihood**: Es el logaritmo de la verosimilitud del modelo, una medida de qué tan bien se ajusta el modelo a los datos observados. 
-
--   **AIC, AICc, BIC**: Sson criterios de información utilizados para la selección de modelos. Cuanto más pequeño sea el valor, mejor se considera el modelo en términos de ajuste y parsimonia. En nuestro caso, se presentan los valores del AIC (4256.31), AIC corregido (AICc, 4257.01) y BIC (4273.33).
-
-
-
 <u>**Estacionariedad en MEDIA**</u>
 
 Una forma de determinar más objetivamente si es necesario diferenciar es utilizar una prueba de raíces unitarias. Se trata de contrastes de hipótesis estadísticos de estacionariedad que están diseñados para determinar si se requiere una diferenciación.
@@ -2184,28 +2075,214 @@ acf_res <- acf(residuals_arima_model, lag.max = 126, plot = FALSE)
 plot(acf_res, main = "ACF of Residuals", xlab = "Lag", ylab = "ACF")
 ```
 
+
 En el gráfico de la función de autocorrelación condicional (ACF) de los residuos, se puede observar si existe alguna autocorrelación significativa en los rezagos (lags). Como los valores de la ACF están dentro de los intervalos de confianza y se aproximan a 0 a medida que aumenta el lag, indica que los residuos son ruido blanco y que la varianza es constante a lo largo del tiempo, lo que es indicativo de estacionariedad en varianza.
 
 El dato que sobresale claramente por encima del resto en el intervalo de confianza se debe precisamente al pico causado por Navidad y Acción de Gracias.
 
-
-
-### Determinación del modelo
+En el caso de Walmart el estudio de características ACF y STL nos revela lo siguiente:
 
 ```{r}
-
+walmart_tsibble_train_agg %>% features(Weekly_Sales, feat_acf)
 ```
 
-#### Modelo A
+-   **acf1**: Es el coeficiente de autocorrelación en el primer rezago (lag 1). Representa la correlación entre los valores actuales y los valores anteriores en un período de tiempo. En nuestro caso 0.339207.
 
-#### Modelo B
+-   **acf10**: Es el coeficiente de autocorrelación en el décimo rezago (lag 10). Representa la correlación entre los valores actuales y los valores que ocurrieron hace 10 períodos de tiempo. En nuestro caso 0.3225304.
 
+-   **diff1_acf1**: Es el coeficiente de autocorrelación en el primer rezago después de aplicar una diferencia de primer orden a la serie temporal. Representa la correlación entre los valores actuales diferenciados y los valores anteriores diferenciados en un período de tiempo. En nuestro caso -0.4107651.
 
-### Fase de estimación y contraste
+-   **diff1_acf10**: Es el coeficiente de autocorrelación en el décimo rezago después de aplicar una diferencia de primer orden a la serie temporal. Representa la correlación entre los valores actuales diferenciados y los valores que ocurrieron hace 10 períodos de tiempo diferenciados. En nuestro caso -0.4921921.
+
+-   **diff2_acf1**: Es el coeficiente de autocorrelación en el primer rezago después de aplicar una diferencia de segundo orden a la serie temporal. Representa la correlación entre los valores actuales diferenciados dos veces y los valores anteriores diferenciados dos veces en un período de tiempo. En nuestro caso -0.6534423.
+
+-   **diff2_acf10**: Es el coeficiente de autocorrelación en el décimo rezago después de aplicar una diferencia de segundo orden a la serie temporal. Representa la correlación entre los valores actuales diferenciados dos veces y los valores que ocurrieron hace 10 períodos de tiempo diferenciados dos veces. En nuestro caso 0.9438333.
 
 ```{r}
-
+walmart_tsibble_train_agg %>% features(Weekly_Sales, feat_stl)
 ```
+
+-   **trend_strength**: Esta métrica representa la fuerza de la tendencia en los datos. Un valor más alto indica una tendencia más fuerte en los datos. En nuestro caso un valor de 0.3315853 sugiere que hay una tendencia discernible en los datos, pero no es demasiado pronunciada. Esto implica que la serie de ventas semanales de Walmart muestra cierta dirección o patrón a lo largo del tiempo, pero no está experimentando cambios extremadamente marcados o una tendencia muy fuerte.
+
+-   **spikiness**: Esta métrica representa la irregularidad o "picos" en los datos. Un valor más alto indica una mayor presencia de picos o variaciones abruptas en los datos. En nuestro caso el valor de 5.235051 indica que hay una alta variabilidad en la presencia de picos en tus datos. Esto implica que las ventas semanales de Walmart pueden experimentar fluctuaciones significativas en ciertos períodos, con la presencia de valores atípicos o picos altos en comparación con los valores promedio; como se puede apreciar en la gráfica y ya anteriormente comentado las semanas de Navidad y Acción de Gracias.
+
+-   **linearity**: Esta métrica representa la linealidad en los datos. Un valor más alto indica una mayor linealidad en los datos, lo que implica que los datos siguen una tendencia lineal. En nuestro caso 5746232.
+
+-   **curvature**: Esta métrica representa la curvatura en los datos. Se basa en el coeficiente de una regresión cuadrática ortogonal aplicada al componente de tendencia. Un valor más alto indica una mayor curvatura en los datos, lo que implica que los datos tienen una forma más curva o no lineal. En nuestro caso 1472471.
+
+Los valores de los indicadores de autocorrelación, como stl_e_acf1 y stl_e_acf10, pueden variar entre -1 y 1.
+
+- Un valor de 1 indica una autocorrelación positiva perfecta, lo que significa que los valores pasados y presentes están completamente correlacionados y se puede predecir uno a partir del otro de manera precisa.
+
+- Un valor de -1 indica una autocorrelación negativa perfecta, lo que significa que los valores pasados y presentes están completamente correlacionados, pero en dirección opuesta, y se puede predecir uno a partir del otro de manera precisa.
+
+- Un valor cercano a 0 indica una autocorrelación débil o nula, lo que implica que no hay una relación lineal o predictiva fuerte entre los valores pasados y presentes.
+
+En nuestro caso:
+
+-   **stl_e_acf1**: Esta métrica representa la autocorrelación a nivel de error después de aplicar la descomposición STL. Es es el primer coeficiente de autocorrelación de la serie residual. Un valor más alto indica una mayor correlación entre los errores residuales. En nuestro caso 0.05815408.
+
+-   **stl_e_acf10**: Esta métrica representa la autocorrelación a nivel de error hasta un retraso de 10 después de aplicar la descomposición STL. Es la suma de los cuadrados de los diez primeros coeficientes de autocorrelación de la serie residual. Un valor más alto indica una mayor correlación entre los errores residuales hasta un retraso de 10 períodos. En nuestro caso 0.2070959.
+
+Otras características:
+
+**Spectral_entropy**: la entropía espectral de una serie temporal es una medida de lo fácil que es predecir la serie. Una serie que tiene una fuerte tendencia y estacionalidad (y por lo tanto es fácil de predecir) tendrá una entropía cercana a 0. Una serie que es muy ruidosa (y por lo tanto es difícil de predecir) tendrá una entropía cercana a 1.
+
+También indica la cantidad de información o desorden presente en la señal de la serie temporal. Cuanto mayor sea el valor de la entropía espectral, mayor será la variabilidad y la impredecibilidad de la señal.
+
+```{r}
+# Calcula la transformada de Fourier de la serie temporal
+fourier_transform <- abs(fft(walmart_tsibble_train_agg$Weekly_Sales))
+
+# Calcula la densidad espectral de potencia
+power_spectral_density <- fourier_transform^2
+
+# Calcula la entropía espectral
+spectral_entropy <- entropy(power_spectral_density, base = 2)
+
+print(spectral_entropy)
+```
+
+En nuestro caso, un valor de 0.1367035 sugiere que la señal tiene cierta variabilidad pero no es extremadamente caótica y fácil de predecir.
+
+## Modelos DUMMY
+
+Algunos métodos de forecasting son extremadamente simples y sorprendentemente eficaces. Usaremos cuatro métodos de forecasting simples como puntos de referencia.
+
+```{r}
+# Fit the models
+walmart_tsibble_train_agg_fit <- walmart_tsibble_train_agg %>%
+  model(
+    Mean = MEAN(Weekly_Sales),
+    `Naïve` = NAIVE(Weekly_Sales),
+    `Seasonal naïve` = SNAIVE(Weekly_Sales),
+    Drift = RW(Weekly_Sales ~ drift())
+  )
+  
+# Generate forecasts for 16 weeks (5 weeks more than the training data)
+walmart_tsibble_train_agg_fit_fc <- walmart_tsibble_train_agg_fit %>% forecast(h = 10)
+
+# Plot series and forecasts
+walmart_tsibble_train_agg %>%
+  autoplot() +
+  autolayer(walmart_tsibble_train_agg_fit_fc, series = "Mean", alpha = 0.7) +
+  autolayer(walmart_tsibble_train_agg_fit_fc, series = "Naïve", alpha = 0.7) +
+  autolayer(walmart_tsibble_train_agg_fit_fc, series = "Seasonal naïve", alpha = 0.7) +
+  autolayer(walmart_tsibble_train_agg_fit_fc, series = "Drift", alpha = 0.7) +
+  ggtitle("Weekly Sales in Walmart") +
+  xlab("Week") + ylab("Weekly Sales") +
+  guides(colour = guide_legend(title = "Forecast")) + 
+  theme(plot.title = element_text(hjust = 0.5)) +
+  scale_y_continuous(labels = unit_format(unit = "M", scale = 1e-6))
+```
+
+Otros como los intervalos de predicción mediante bootstrap pueden calcular intervalos de predicción calculando los percentiles para cada horizonte de predicción.
+
+```{r}
+## Fit the model
+fit <- walmart_tsibble_train_agg %>%
+  model(NAIVE(Weekly_Sales))
+## Generate simulations
+sim <- fit %>% generate(h = 30, times = 5, bootstrap = TRUE)
+
+walmart_tsibble_train_agg %>%
+  ggplot(aes(x = Date)) +
+  geom_line(aes(y = Weekly_Sales)) +
+  geom_line(aes(y = .sim, colour = as.factor(.rep)), data = sim) +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  scale_y_continuous(labels = unit_format(unit = "M", scale = 1e-6)) +
+  ggtitle("Bootstrap Forecasting") +
+  guides(col = FALSE)
+```
+
+## ARIMA 
+
+El modelo ARIMA (Autoregressive Integrated Moving Average) es uno de los modelos más utilizados para el análisis y la predicción de series temporales. Combina componentes autoregresivos (AR), componentes de promedio móvil (MA) y componentes de diferenciación (I) para capturar la estructura y los patrones presentes en los datos.
+
+El modelo ARIMA se define por tres parámetros principales: p, d y q.
+
+-   El parámetro **p** (orden del componente autoregresivo) indica el número de pasos de tiempo anteriores que se tienen en cuenta para predecir el valor actual. Un valor alto de p indica una dependencia fuerte de los valores pasados.
+
+-   El parámetro **d** (orden de diferenciación) representa el número de veces que se realiza la diferenciación para convertir una serie no estacionaria en una serie estacionaria. La diferenciación se utiliza para eliminar tendencias y estacionalidad en los datos.
+
+-   El parámetro **q** (orden del componente de promedio móvil) especifica el número de pasos de tiempo anteriores de los errores de predicción que se tienen en cuenta para predecir el valor actual. Un valor alto de q indica una dependencia fuerte de los errores pasados.
+
+En el proceso de ajuste de un modelo ARIMA implica la identificación de los valores óptimos de p, d y q, lo que se conoce como orden del modelo. Esto se puede lograr mediante técnicas como la función de autocorrelación (ACF) y la función de autocorrelación parcial (PACF), que ayudan a determinar la dependencia temporal en los datos.
+
+Es importante mencionar que el modelo ARIMA tiene algunas limitaciones y suposiciones, como la estacionariedad de la serie, la linealidad de las relaciones y la ausencia de valores atípicos.
+
+```{r}
+# Cálculo de la función de autocorrelación (ACF)
+acf_values <- acf(walmart_tsibble_train_agg$Weekly_Sales, lag.max = 126)
+
+# Cálculo de la función de autocorrelación parcial (PACF)
+pacf_values <- pacf(walmart_tsibble_train_agg$Weekly_Sales, lag.max = 126)
+
+# Gráfico de la función de autocorrelación (ACF)
+plot(acf_values, main = "ACF")
+
+# Gráfico de la función de autocorrelación parcial (PACF)
+plot(pacf_values, main = "PACF")
+```
+
+Una vez identificados posibles valores de p y q utilizando el análisis de ACF y PACF, realizamos la función auto.arima() para realizar una búsqueda automática y encontrar los mejores parámetros para el modelo.
+
+```{r}
+# Búsqueda automática de parámetros ARIMA
+arima_model <- auto.arima(walmart_tsibble_train_agg)
+
+# Imprimir los parámetros óptimos encontrados
+print(arima_model)
+```
+
+-   **ARIMA(2,0,2) with non-zero mean**: Indica los órdenes de los componentes AR, I y MA del modelo ARIMA. En nuestro caso, se trata de un modelo ARIMA con 2 términos autoregresivos (AR), 0 diferencias (I) y 2 términos de media móvil (MA).
+
+-   **Coefficients**: Muestra los coeficientes estimados para cada componente del modelo ARIMA. En nuestro caso, se presentan los coeficientes estimados para los términos AR1, AR2, MA1, MA2 y la media no nula (mean).
+
+-   **sigma^2**: Es la varianza estimada del error del modelo. 
+
+-   **log likelihood**: Es el logaritmo de la verosimilitud del modelo, una medida de qué tan bien se ajusta el modelo a los datos observados. 
+
+-   **AIC, AICc, BIC**: Sson criterios de información utilizados para la selección de modelos. Cuanto más pequeño sea el valor, mejor se considera el modelo en términos de ajuste y parsimonia. En nuestro caso, se presentan los valores del AIC (4256.31), AIC corregido (AICc, 4257.01) y BIC (4273.33).
+
+
+## SARIMA
+
+El modelo SARIMA (Seasonal Autoregressive Integrated Moving Average) es una extensión del modelo ARIMA que tiene en cuenta tanto la tendencia y la estacionalidad de la serie, así como la autocorrelación y la variabilidad aleatoria.
+
+El término SARIMA se desglosa de la siguiente manera:
+
+-   **S**: Representa la componente estacional de la serie. Indica la periodicidad de la estacionalidad en la serie, es decir, la frecuencia con la que se repite el patrón estacional.
+-   **AR**: Significa Autoregressive, se refiere a la componente autorregresiva del modelo. Representa la relación lineal entre los valores pasados y presentes de la serie.
+-   **I**: Significa Integrated, se refiere a la componente integrada del modelo. Indica la cantidad de veces que es necesario diferenciar la serie para obtener una serie estacionaria en media.
+-   **MA**: Significa Moving Average, se refiere a la componente de media móvil del modelo. Representa la relación lineal entre los errores pasados y presentes del modelo.
+
+El modelo SARIMA se especifica mediante tres conjuntos de parámetros: p, d, q, P, D, Q, y s.
+
+-   **p**: Es el orden del componente autorregresivo (AR), es decir, el número de rezagos pasados que se tienen en cuenta para predecir el valor actual.
+-   **d**: Es el orden de diferenciación (Integrated), es decir, el número de veces que se diferencia la serie para obtener una serie estacionaria en media.
+-   **q**: Es el orden del componente de media móvil (MA), es decir, el número de errores pasados que se tienen en cuenta para predecir el valor actual.
+-   **P**: Es el orden del componente autorregresivo estacional (SAR), es similar al parámetro p pero aplicado a los rezagos estacionales.
+-   **D**: Es el orden de diferenciación estacional (Seasonal Integrated), similar al parámetro d pero aplicado a las diferencias estacionales.
+-   **Q**: Es el orden del componente de media móvil estacional (SMA), similar al parámetro q pero aplicado a los errores estacionales.
+-   **s**: Es la periodicidad estacional de la serie, indica el número de períodos en una temporada completa.
+
+
+```{r}
+# Ajustar el modelo SARIMA
+sarima_model <- walmart_tsibble_train_agg %>%
+  model(
+    sarima = ARIMA(Weekly_Sales ~ pdq(1, 0, 1) + PDQ(1, 0, 1))
+  )
+
+# Realizar pronóstico con el modelo SARIMA
+sarima_forecast <- sarima_model %>%
+  forecast(new_data = walmart_tsibble_test_agg)
+
+# Visualizar el pronóstico
+autoplot(sarima_forecast)
+```
+
 
 ### Diagnosis de residuos
 
