@@ -1577,7 +1577,7 @@ perceptron_model <- neuralnet(formula, data = train_data_norm, hidden = c(1))
 print(perceptron_model)
 ```
 
-Los sedultados obtenidos nos revelan lo siguiente:
+Los redultados obtenidos nos revelan lo siguiente:
 
 -   **Error**: El error obtenido por el modelo es de 1028.128. Este valor indica la diferencia promedio entre los valores reales y los valores predichos por el modelo. Un valor bajo de error indica un buen ajuste del modelo.
 
@@ -1601,40 +1601,6 @@ Los sedultados obtenidos nos revelan lo siguiente:
 
 \
 
-Basandonos en otros modelos de redes neuronales utilizamos primero un modelo lineal para determinar las variables más relevantes a  utilizar en el modelo.
-
-```{r}
-mhp$elevator <- as.numeric(mhp$elevator)
-mhp$garage <- as.numeric(mhp$garage)
-mhp$elevator <- as.numeric(mhp$elevator)
-lm_mhp <- lm(price ~ exterior + rooms + m2 + elevator + garage, data=mhp)
-summary(lm_mhp)
-```
-
-Como el R2 es 71%, aparentemente el modelo lineal explica bastante de la variable respuesta. La variables exterior no parece tener gran relación lineal con la variable respuesta. 
-El último p-valor (p-value: < 2.2e-16) es un p-valor conjunto que indica que el grupo de variables sí tiene influencia en la variable respuesta; en otras palabras, alguna de las variables del conjunto de regresores es influyente en la variable respuesta.
-
-Sin embargo, este modelo lineal sólo es válido si se verifican las hipótesis del modelo de regresión lineal, es decir, normalidad en los residuos y linealidad. Utilicemos las rutinas de R para verificar estos supuestos:
-
-El comando  plot(lm_mhp) nos muestra secuencialmente todos los gráficos de diagnosis del modelo. Podemos presentarlos de uno en uno así:
-
-```{r}
-res_plot1 <- plot(lm_mhp,1)
-res_plot2 <- plot(lm_mhp,2)
-
-grid.arrange(res_plot1, res_plot2, ncol=2)
-```
-
-Se evidencia cierta heterocedasticidad, lo cual invalida de entrada el modelo de regresión para este problema; la relación entre el precio de las casas y las variables explicativas es no lineal.
-
-```{r}
-mhp.nnet <- nnet(price ~ rooms + m2 + elevator + garage, data = mhp, rang=0.1,size=8,linout=T,maxit=1000)
-```
-
-```{r}
-red.mhp = neuralnet(price ~ rooms + m2 + elevator + garage, data = mhp,hidden=2,rep=1)
-#plot(red.mhp)
-```
 
 
 \
