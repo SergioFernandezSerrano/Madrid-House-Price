@@ -60,6 +60,7 @@ library(Metrics)
 library(factoextra)
 library(NbClust)
 library(neuralnet)
+library(nnet)
 library(reticulate)
 
 # Librerías para SERIES TEMPORALES
@@ -1479,13 +1480,7 @@ N_F_modelo_svm_cv <- train(precio_bin ~ rooms + m2 + garage + elevator + tipo_ca
 print(N_F_modelo_svm_cv)
 ```
 
-```{r}
-knn_model <- knn.cv(mhp_train[,c("exterior","rooms","m2","elevator", "garage")], 
-                    k = 5, cl = mhp_train$precio_bin)
-```
-
-
-Le realizó la validación cruzada con 6 predictores y 10 pliegues alcanzándose una precisión del 90.29% y un Kappa del 80.57%. 
+Se realizó la validación cruzada con 6 predictores y 10 pliegues alcanzándose una precisión del 90.29% y un Kappa del 80.57%. 
 
 # Elección del mejor punto de corte según la curva ROC
 
@@ -1551,6 +1546,8 @@ El Deep Learning ha mostrado un gran éxito en una amplia variedad de tareas de 
 
 Algunas de las arquitecturas de redes neuronales profundas más utilizadas en Deep Learning incluyen las redes neuronales convolucionales (CNN) para el procesamiento de imágenes, redes neuronales recurrentes (RNN) para el procesamiento de secuencias y las redes neuronales generativas adversariales (GAN) para la generación de contenido nuevo.
 
+\
+
 Entonces... ¿Cómo funcionan?
 
 Se podría decir que funcionan como un cerebro humano, hay neuronas y cada una de ellas recibe diferentes señales de entrada (𝑥1, 𝑥2, ...) de fuentes externas o de otras neuronas.
@@ -1559,13 +1556,115 @@ La fase de entrenamiento modifica los pesos, y la neurona calcula una salida, us
 
 Aplicado a nuestro dataset del mercado inmobiliario en Madrid, vamos a ir entrenando una red neuronal con distintas configuraciones de capas, neuronas y funciones de activación para ver si obtenemos un modelo realmente predictivo del precio de los inmuebles y por consiguiente generar una buena herramienta de clasificación de los mismos.
 
+Comenzamos con un modelo muy simple basado en la idea del **Perceptrón**; una de las redes neuronales más simples donde sola capa con tantas neuronas como salidas sean precisas y cada neurona tiene tanas entradas como dimensión del patrón de entrada y la función de activación es la función umbral.
+
 ```{r}
+# Crear un dataframe con los datos de entrenamiento (mhp_train)
+train_data <- mhp_train[, c("price", "rooms", "m2", "elevator", "garage")]
+train_data$garage <- as.numeric(train_data$garage)
+train_data$elevator <- as.numeric(train_data$elevator)
 
+# Normalizar los datos de entrenamiento
+train_data_norm <- scale(train_data)
+
+# Crear una fórmula para el modelo de red neuronal
+formula <- as.formula("price ~ rooms + m2 + elevator + garage")
+
+# Entrenar el modelo de perceptrón simple
+perceptron_model <- neuralnet(formula, data = train_data_norm, hidden = c(1))
+
+# Imprimir el modelo
+print(perceptron_model)
 ```
 
-```{python}
+Los sedultados obtenidos nos revelan lo siguiente:
 
+-   **Error**: El error obtenido por el modelo es de 1028.128. Este valor indica la diferencia promedio entre los valores reales y los valores predichos por el modelo. Un valor bajo de error indica un buen ajuste del modelo.
+
+-   **Reached Threshold**: El valor obtenido es 0.009869146. Indica la fracción de veces que se alcanzó el umbral durante el proceso de entrenamiento. Un valor cercano a cero indica que el modelo alcanzó el umbral deseado con poca frecuencia.
+
+-   **Steps**: El número de pasos requeridos para entrenar el modelo es de 5573. Este valor representa la cantidad de iteraciones realizadas durante el proceso de entrenamiento.
+
+-   **Intercept.to.1layhid1**: El valor obtenido es 1.294984. Indica el peso o coeficiente asociado entre el intercepto (término constante) y la conexión con el primer nodo de la capa oculta. Este valor representa la importancia relativa de la conexión en el modelo.
+
+-   **rooms.to.1layhid1**: El valor obtenido es 0.1210526. Indica el peso o coeficiente asociado entre la variable "rooms" y la conexión con el primer nodo de la capa oculta. Este valor representa la influencia de la variable "rooms" en la salida del primer nodo de la capa oculta.
+
+-   **m2.to.1layhid1**: El valor obtenido es -0.9165479. Indica el peso o coeficiente asociado entre la variable "m2" y la conexión con el primer nodo de la capa oculta. Este valor representa la influencia de la variable "m2" en la salida del primer nodo de la capa oculta.
+
+-   **elevator.to.1layhid1**: El valor obtenido es 0.1926677. Indica el peso o coeficiente asociado entre la variable "elevator" y la conexión con el primer nodo de la capa oculta. Este valor representa la influencia de la variable "elevator" en la salida del primer nodo de la capa oculta.
+
+-   **garage.to.1layhid1**: El valor obtenido es -0.08063252. Indica el peso o coeficiente asociado entre la variable "garage" y la conexión con el primer nodo de la capa oculta. Este valor representa la influencia de la variable "garage" en la salida del primer nodo de la capa oculta.
+
+-   **Intercept.to.price**: El valor obtenido es 4.284198. Indica el peso o coeficiente asociado entre el intercepto (término constante) y la variable de salida "price". Este valor representa la importancia relativa del intercepto en la predicción del precio.
+
+-   **1layhid1.to.price**: El valor obtenido es -5.580131. Indica el peso o coeficiente asociado entre la salida del primer nodo de la capa oculta y la variable de salida "price". Este valor representa la influencia de la salida del primer nodo de la capa oculta en la predicción del precio.
+
+\
+
+Basandonos en otros modelos de redes neuronales utilizamos primero un modelo lineal para determinar las variables más relevantes a  utilizar en el modelo.
+
+```{r}
+mhp$elevator <- as.numeric(mhp$elevator)
+mhp$garage <- as.numeric(mhp$garage)
+mhp$elevator <- as.numeric(mhp$elevator)
+lm_mhp <- lm(price ~ exterior + rooms + m2 + elevator + garage, data=mhp)
+summary(lm_mhp)
 ```
+
+Como el R2 es 71%, aparentemente el modelo lineal explica bastante de la variable respuesta. La variables exterior no parece tener gran relación lineal con la variable respuesta. 
+El último p-valor (p-value: < 2.2e-16) es un p-valor conjunto que indica que el grupo de variables sí tiene influencia en la variable respuesta; en otras palabras, alguna de las variables del conjunto de regresores es influyente en la variable respuesta.
+
+Sin embargo, este modelo lineal sólo es válido si se verifican las hipótesis del modelo de regresión lineal, es decir, normalidad en los residuos y linealidad. Utilicemos las rutinas de R para verificar estos supuestos:
+
+El comando  plot(lm_mhp) nos muestra secuencialmente todos los gráficos de diagnosis del modelo. Podemos presentarlos de uno en uno así:
+
+```{r}
+res_plot1 <- plot(lm_mhp,1)
+res_plot2 <- plot(lm_mhp,2)
+
+grid.arrange(res_plot1, res_plot2, ncol=2)
+```
+
+Se evidencia cierta heterocedasticidad, lo cual invalida de entrada el modelo de regresión para este problema; la relación entre el precio de las casas y las variables explicativas es no lineal.
+
+```{r}
+mhp.nnet <- nnet(price ~ rooms + m2 + elevator + garage, data = mhp, rang=0.1,size=8,linout=T,maxit=1000)
+```
+
+```{r}
+red.mhp = neuralnet(price ~ rooms + m2 + elevator + garage, data = mhp,hidden=2,rep=1)
+#plot(red.mhp)
+```
+
+
+\
+
+Continuamos seleccionando as variables "rooms", "m2", "elevator" y "garage" como características de entrada (variables independientes) y "price" como la variable objetivo (variable dependiente) que queremos predecir. 
+
+Hemos normalizado los datos de entrenamiento utilizando la función scale() para asegurarnos de que todas las variables tengan la misma escala.
+
+El argumento hidden en la función neuralnet() especifica la estructura de capas ocultas de la red neuronal. En este caso, hemos utilizado dos capas ocultas con 5 y 3 nodos respectivamente.
+
+```{r}
+# Crear un dataframe con los datos de entrenamiento (mhp_train)
+train_data <- mhp_train[, c("price", "rooms", "m2", "elevator", "garage")]
+train_data$garage <- as.numeric(train_data$garage)
+train_data$elevator <- as.numeric(train_data$elevator)
+
+# Normalizar los datos de entrenamiento
+train_data_norm <- scale(train_data)
+
+# Crear una fórmula para el modelo de red neuronal
+formula <- as.formula("price ~ rooms + m2 + elevator + garage")
+
+# Entrenar el modelo de red neuronal
+neuralnet_model <- neuralnet(formula, data = train_data_norm, hidden = c(5, 3))
+
+# Imprimir el modelo
+print(neuralnet_model)
+```
+
+
 
 
 # Explicabilidad
@@ -2075,7 +2174,6 @@ acf_res <- acf(residuals_arima_model, lag.max = 126, plot = FALSE)
 plot(acf_res, main = "ACF of Residuals", xlab = "Lag", ylab = "ACF")
 ```
 
-
 En el gráfico de la función de autocorrelación condicional (ACF) de los residuos, se puede observar si existe alguna autocorrelación significativa en los rezagos (lags). Como los valores de la ACF están dentro de los intervalos de confianza y se aproximan a 0 a medida que aumenta el lag, indica que los residuos son ruido blanco y que la varianza es constante a lo largo del tiempo, lo que es indicativo de estacionariedad en varianza.
 
 El dato que sobresale claramente por encima del resto en el intervalo de confianza se debe precisamente al pico causado por Navidad y Acción de Gracias.
@@ -2268,23 +2366,7 @@ El modelo SARIMA se especifica mediante tres conjuntos de parámetros: p, d, q, 
 -   **s**: Es la periodicidad estacional de la serie, indica el número de períodos en una temporada completa.
 
 
-```{r}
-# Ajustar el modelo SARIMA
-sarima_model <- walmart_tsibble_train_agg %>%
-  model(
-    sarima = ARIMA(Weekly_Sales ~ pdq(1, 0, 1) + PDQ(1, 0, 1))
-  )
-
-# Realizar pronóstico con el modelo SARIMA
-sarima_forecast <- sarima_model %>%
-  forecast(new_data = walmart_tsibble_test_agg)
-
-# Visualizar el pronóstico
-autoplot(sarima_forecast)
-```
-
-
-### Diagnosis de residuos
+## Diagnosis de residuos
 
 ```{r}
 
@@ -2314,7 +2396,7 @@ autoplot(sarima_forecast)
 
 ```
 
-### Fase de predicción
+## Fase de predicción
 
 Finalmente evaluamos la capacidad predictiva del modelo. Calculamos las predicciones y calculamos sus errores y los comparamos con los residuos.
 
