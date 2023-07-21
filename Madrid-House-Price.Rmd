@@ -72,7 +72,7 @@ library(feasts)
 library(fable)
 library(stats)
 library(zoo)
-library(DT)
+#library(DT)
 library(signal)
 library(entropy)
 ```
@@ -1172,10 +1172,10 @@ Pasamos a construir el modelo comenzando con 10 árboles aleatórios.
 # Escalamos la columna 4 en train y test
 set.seed(19042023)
 mhp_train_scaled <- mhp_train
-mhp_train_scaled[, 4] <- scale(mhp_train[, 4])
+mhp_train_scaled[, c(4,5)] <- scale(mhp_train[, c(4,5)])
 
 mhp_test_scaled <- mhp_test
-mhp_test_scaled[, 4] <- scale(mhp_test[, 4])
+mhp_test_scaled[, c(4,5)] <- scale(mhp_test[, c(4,5)])
 
 # Nos quedamos con todas las variables menos barrio y distrito porque hay muchas categorias
 # Cogemos solo 10 árboles en el parámetro ntree
@@ -1213,6 +1213,63 @@ confusionMatrix(y_pred, mhp_test_scaled[["precio_bin"]])
 La precisión del modelo es del 0,9077 y el intervalo de confianza del 95% es (0,8908, 0,9099), lo que indica que podemos estar bastante seguros de que la precisión real del modelo está dentro de este rango. El valor de kappa de 0,8013 indica que hay una buena concordancia entre las predicciones del modelo y las observaciones reales.
 
 Además, la sensibilidad del modelo es del 0,8670 y la especificidad del 0,9343. La tasa de detección es del 0,4335 y la prevalencia es del 0,5000. En general, el modelo tiene un desempeño bastante bueno en la clasificación de las viviendas por encima y por debajo del umbral.
+
+## Redes neuronales
+
+```{r}
+str(mhp_train_scaled)
+```
+
+
+```{r}
+library(h2o)
+variables_numericas <- c("elevator","garage","exterior")
+mhp_train_scaled[variables_numericas] <- lapply(mhp_train_scaled[variables_numericas], as.numeric)
+mhp_train_scaled$tipo_casa = as.numeric(factor(mhp_train_scaled$tipo_casa,
+                                               levels = c("casa","piso","sotano"),
+                                               labels = c(1,2,3)))
+mhp_train_scaled$precio_distrito = as.numeric(factor(mhp_train_scaled$precio_distrito,
+                                               levels = c("caro","medio","barato"),
+                                               labels = c(1,2,3)))
+RNA_train = mhp_train_scaled[,c(3,4,5,6,7,10,11,12)]
+```
+
+
+```{r}
+h2o.init(nthreads = -1)
+clasificador_RNA = h2o.deeplearning(y = "precio_bin",
+                                    training_frame = as.h2o(mhp_train_scaled),
+                                    activation = "Rectifier",
+                                    hidden = c(6,6),
+                                    epochs = 100,
+                                    train_samples_per_iteration = -2)
+```
+
+```{r}
+mhp_test_scaled[variables_numericas] <- lapply(mhp_test_scaled[variables_numericas], as.numeric)
+mhp_test_scaled$tipo_casa = as.numeric(factor(mhp_test_scaled$tipo_casa,
+                                               levels = c("casa","piso","sotano"),
+                                               labels = c(1,2,3)))
+mhp_test_scaled$precio_distrito = as.numeric(factor(mhp_test_scaled$precio_distrito,
+                                               levels = c("caro","medio","barato"),
+                                               labels = c(1,2,3)))
+RNA_test = mhp_test_scaled[,c(3,4,5,6,7,10,11,12)]
+```
+
+```{r}
+RNA_predictor = h2o.predict(clasificador_RNA,
+                            newdata = as.h2o(RNA_test[,-8]))
+RNA_y_pred = as.vector(RNA_predictor>0.5)
+
+
+```
+
+
+
+
+
+
+
 
 ## SVM
 
@@ -1557,6 +1614,26 @@ La fase de entrenamiento modifica los pesos, y la neurona calcula una salida, us
 Aplicado a nuestro dataset del mercado inmobiliario en Madrid, vamos a ir entrenando una red neuronal con distintas configuraciones de capas, neuronas y funciones de activación para ver si obtenemos un modelo realmente predictivo del precio de los inmuebles y por consiguiente generar una buena herramienta de clasificación de los mismos.
 
 Comenzamos con un modelo muy simple basado en la idea del **Perceptrón**; una de las redes neuronales más simples donde sola capa con tantas neuronas como salidas sean precisas y cada neurona tiene tanas entradas como dimensión del patrón de entrada y la función de activación es la función umbral.
+
+```{r}
+library(h2o)
+mhp_train_scaled$tipo_casa = as.numeric(factor(mhp_train_scaled$tipo_casa,
+                                               levels = c("casa","piso","sotano"),
+                                               labels = c(1,2,3)))
+mhp_train_scaled$precio_distrito = as.numeric(factor(mhp_train_scaled$precio_distrito,
+                                               levels = c("caro","medio","barato"),
+                                               labels = c(1,2,3)))
+RNA_dataset = mhp_train_scaled[,c(3,4,5,6,7,10,11,12)]
+```
+
+
+
+
+
+
+
+
+
 
 ```{r}
 # Crear un dataframe con los datos de entrenamiento (mhp_train)
